@@ -12,40 +12,50 @@ toc_float:
   collapsed: yes
 ---
   
-  \usepackage{color}
+\usepackage{color}
 
 ```{=html}
 <style>
   code.r{
     font-size: 10px;
-  }
-pre {
-  font-size: 12px
+ }
+pre{
+  font-size: 10px;
+  background-color: #E2E8F0;
+  font-family:"Verdana"; 
+  font-weight: plain;
 }
 </style>
   
-  <style>
+<style>
   body {
     text-align: justify;
     font-style: normal;
-    font-family: "Montserrat Medium";
+    font-family: "Verdana";
     font-size: 12px
   }
 h1.title {
-  font-size: 40px;
+  font-size: 30px;
+  font-family: "Verdana";
   color: #000D3B;
 }
 h1 {
+  font-size: 30px;
+  font-family: "Verdana";
   color: #B6854D;
 }
 h2 {
+  font-size: 24px;
+  font-family: "Verdana";
   color: #172984;
 }
 h3 {
+   font-size: 20px;
+   font-family: "Verdana";
   color: #172984;
 }
 </style>
-  ```
+```
 
 ```{=html}
 <style>
@@ -56,11 +66,14 @@ h3 {
     color: #0A2687;
   }
 .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
-  color: #ffffff;
+    color: #ffffff;
+    font-family: "Verdana";
     background-color: #09C2BC;
 }
 </style>
-  ```
+```
+
+
 
 ```{r, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = FALSE, cache.lazy = FALSE, 
