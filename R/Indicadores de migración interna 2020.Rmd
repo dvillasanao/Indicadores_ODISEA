@@ -21,7 +21,7 @@ toc_float:
  }
 pre{
   font-size: 10px;
-  background-color: #E2E8F0;
+  background-color: #F8F3F8  ;
   font-family:"Verdana"; 
   font-weight: plain;
 }
@@ -37,12 +37,12 @@ pre{
 h1.title {
   font-size: 30px;
   font-family: "Verdana";
-  color: #000D3B;
+  color: #930C6D;
 }
 h1 {
   font-size: 30px;
   font-family: "Verdana";
-  color: #B6854D;
+  color: #9A1E77;
 }
 h2 {
   font-size: 24px;
@@ -63,12 +63,12 @@ h3 {
     position: relative;
     display: block;
     padding: 10px 15px;
-    color: #0A2687;
+    color: #710B6B;
   }
 .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
     color: #ffffff;
     font-family: "Verdana";
-    background-color: #09C2BC;
+    background-color: #BF5C9E;
 }
 </style>
 ```
@@ -628,6 +628,9 @@ TE_est %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 ```
 
+
+**Se guardan las base de datos**  
+
 ```{r}
 # Se guardan los resultados
 wb <- createWorkbook()
@@ -656,51 +659,53 @@ saveWorkbook(wb,
 ### Muestreo Complejo (Opción 2)
 
 ```{r}
-MC <- muestra_2020 %>%
-  as.data.frame() %>%
-  select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %>%
-  mutate(EDAD = as.numeric(.$EDAD)) %>%
-  mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
-                                     .$ENT_PAIS_RES_5A %nin% estados ~ "888", #Residencia en otro país
-                                     .$ENT_PAIS_RES_5A %in% "997" ~ "997",
-                                     .$ENT_PAIS_RES_5A %in% "998" ~ "998",
-                                     .$ENT_PAIS_RES_5A %in% "997" ~ "999")) %>% 
-  mutate(I_RES_5A = case_when((.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% estados ~ .$ENT_PAIS_RES_5A,
-                              (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "888" ~ "888",
-                              (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "997" ~ "997",
-                              (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "998" ~ "998",
-                              (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "999" ~ "999")) %>%
-  mutate(CVE_ENTS = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A)) %>%
-  mutate(M = 1) %>%
-  mutate(RESHAB = 1,
-         RESREC = case_when(EDAD >= 5 & EDAD <= 130 ~ 1,
-                            TRUE ~ NA),
-         MIG = case_when(.$CVE_ENT !=.$ENT_PAIS_RES_5A  & (EDAD >= 5 & EDAD <= 130) ~ 1,
-                         TRUE ~ NA),
-         NOMIGRA = case_when(.$CVE_ENT ==.$ENT_PAIS_RES_5A & (EDAD >= 5 & EDAD <= 130) ~ 1,
-                             TRUE ~ NA)) 
-MC <- MC %>%
-  as.data.frame() %>%
-  select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, RESHAB, RESREC,  MIG, NOMIGRA) %>%
-  melt(., id = c("UPM", "ESTRATO", "FACTOR", "RESHAB", "RESREC", "MIG", "NOMIGRA")) %>%
-  srvyr::as_survey_design(ids = UPM, strata = ESTRATO, weights = FACTOR, nest = TRUE)
+require(srvyr)
 
-
-p <- MC %>%
-  group_by(value) %>%
-  dplyr::summarise(RESHAB = survey_total(ifelse(variable == "CVE_ENT", RESHAB, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                   RESREC = survey_total(ifelse(variable == "CVE_ENT", RESREC, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                   INMIG = survey_total(ifelse(variable == "CVE_ENT", MIG, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE), 
-                   EMIG = survey_total(ifelse(variable == "CVE_ENT5" & value %in% estados, MIG, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE)) %>%
-  ungroup()  %>%
-  mutate(MIGNETA = INMIG - EMIG, 
-         MIGBRUTA = INMIG + EMIG,
-         TASAINMI = ((INMIG/ 5) /((RESHAB + RESREC) / 2))*1000,
-         TASAEMI = ((EMIG/ 5) /((RESHAB + RESREC) / 2))*1000, 
-         TASAMIG = TASAINMI - TASAEMI,
-         EFICACIA = MIGNETA - MIGBRUTA) 
+svy_design <- MC %>%
+               srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
 ```
 
+**Inmigrantes** 
+
+```{r}
+Total_Inmigrantes <- svy_design %>%
+                      dplyr::summarise(Poblacion_Total = survey_total(M, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                       Residentes = survey_total(Residentes, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                       Inmigrantes = survey_total(Migrantes, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                       TInmigracion = survey_ratio(numerator = Migrantes, denominator = M, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE)) 
+
+Total_Inmigrantes %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+
+inmigrantes <- svy_design %>%
+                group_by(CVE_ENT) %>%
+                 dplyr::summarise(Poblacion_Total = survey_total(M, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Residentes = survey_total(Residentes, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Inmigrantes = survey_total(Migrantes, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  TInmigracion = survey_ratio(numerator = Migrantes, denominator = M, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+
+inmigrantes %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
+
+**Emigrantes** 
+
+```{r}
+Total_Emigrantes <- svy_design %>%
+                     dplyr::summarise(Emigrantes = survey_total(Migrantes, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                      TEmigracion = survey_ratio(numerator = Migrantes, denominator = PPob, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+
+emigrantes <- svy_design %>%
+               group_by(ENT_PAIS_NAC) %>%
+                dplyr::summarise(Emigrantes = survey_total(Migrantes, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                 TEmigracion = survey_ratio(numerator = Migrantes, denominator = PPob, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+
+emigrantes %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
 
 # Nivel municipal {.tabset .tabset-pills}
 

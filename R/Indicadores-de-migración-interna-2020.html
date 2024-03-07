@@ -432,7 +432,7 @@ font-size: 10px;
 }
 pre{
 font-size: 10px;
-background-color: #E2E8F0;
+background-color: #F8F3F8 ;
 font-family:"Verdana"; font-weight: plain;
 }
 </style>
@@ -447,12 +447,12 @@ font-size: 12px
 h1.title {
 font-size: 30px;
 font-family: "Verdana";
-color: #000D3B;
+color: #930C6D;
 }
 h1 {
 font-size: 30px;
 font-family: "Verdana";
-color: #B6854D;
+color: #9A1E77;
 }
 h2 {
 font-size: 24px;
@@ -470,12 +470,12 @@ color: #172984;
 position: relative;
 display: block;
 padding: 10px 15px;
-color: #0A2687;
+color: #710B6B;
 }
 .nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
 color: #ffffff;
 font-family: "Verdana";
-background-color: #09C2BC;
+background-color: #BF5C9E;
 }
 </style>
 <p><strong>Cuestionario Ampliado del Censo de Población y Vivienda
@@ -781,7 +781,7 @@ MC &lt;- mydata %&gt;%
                   mutate(PPob = Pob.Total_Estados / Pob.Total.Nacimiento)</code></pre>
 <div id="muestreo-complejo-opción-1" class="section level3">
 <h3>Muestreo Complejo (Opción 1)</h3>
-<pre class="r fold-show"><code>   svy_design &lt;- MC  %&gt;%
+<pre class="r fold-show"><code>svy_design &lt;- MC  %&gt;%
                svydesign(data = ., 
                           ids = ~UPM, 
                            strata = ~ESTRATO, 
@@ -789,18 +789,18 @@ MC &lt;- mydata %&gt;%
                              nest = TRUE)</code></pre>
 <p><strong>Población total</strong></p>
 <pre class="r fold-show"><code>## Población Total (Indicadora de nacimiento)
-Total_Residentes_est &lt;- svyby(~Residentes,
+Total_Residentes &lt;- svyby(~Residentes,
                                by = ~M,
                                 svy_design,
                                  svytotal,
                                   vartype = c(&quot;se&quot;,&quot;cv&quot;),
                                    drop.empty.groups = TRUE) %&gt;%
                           cbind(confint(object = ., level = 0.90))
-Total_Residentes_est %&gt;% 
+Total_Residentes %&gt;% 
  as.data.frame() %&gt;%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))
 
-Total_Inmigrantes_est &lt;- svyby(~Residentes,
+Total_Inmigrantes &lt;- svyby(~Migrantes,
                                 by = ~M,
                                  svy_design,
                                   svytotal,
@@ -808,30 +808,105 @@ Total_Inmigrantes_est &lt;- svyby(~Residentes,
                                     drop.empty.groups = TRUE) %&gt;%
                            cbind(confint(object = ., level = 0.90))
 
-Total_Inmigrantes_est %&gt;% 
+Total_Inmigrantes %&gt;% 
+ as.data.frame() %&gt;%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))</code></pre>
+<p><strong>Tasa de Inmigración</strong></p>
+<pre class="r fold-show"><code>## Población Total (Lugar de Nacimiento) en el estado
+TI_Total &lt;- svyby(~Migrantes,
+                   denominator = ~M,
+                    by = ~M,
+                    svy_design,
+                     svyratio,
+                      vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                       drop.empty.groups = TRUE) %&gt;%
+             cbind(confint(object = ., level = 0.90))
+TI_Total %&gt;%
  as.data.frame() %&gt;%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))</code></pre>
 <p><strong>Residentes por estado</strong></p>
 <pre class="r fold-show"><code>## Población Total (Lugar de Nacimiento) en el estado
-est &lt;- svyby(~I_Nacimiento,
-              by = ~CVE_ENT,
-               svy_design,
-                svytotal,
-                 vartype = c(&quot;se&quot;,&quot;cv&quot;, &quot;ci&quot;, &quot;ci&quot;),
-                  quantiles = 0.1, ci=TRUE,
-                  drop.empty.groups = TRUE)
-         cbind(confint(object = est, level = 0.90))
+residentes &lt;- svyby(~Residentes,
+                     by = ~CVE_ENT,
+                      svy_design,
+                       svytotal,
+                        vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                         drop.empty.groups = TRUE) %&gt;%
+               cbind(confint(object = ., level = 0.90))
 
-est %&gt;%
+residentes %&gt;%
  as.data.frame() %&gt;%
-  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))</code></pre>
+<p><strong>Inmigrantes por estado</strong></p>
+<pre class="r fold-show"><code>## Población Total (Lugar de Nacimiento) en el estado
+inmigrantes &lt;- svyby(~Migrantes,
+                       by = ~CVE_ENT,
+                        svy_design,
+                         svytotal,
+                          vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                           drop.empty.groups = TRUE) %&gt;%
+                 cbind(confint(object = ., level = 0.90))
 
-# Se guardan los resultados
+inmigrantes %&gt;%
+ as.data.frame() %&gt;%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))</code></pre>
+<p><strong>Emigrantes por estado</strong></p>
+<pre class="r fold-show"><code>## Población Total (Lugar de Nacimiento) en el estado
+emigrantes &lt;- svyby(~Migrantes,
+                     by = ~ENT_PAIS_NAC,
+                      svy_design,
+                       svytotal,
+                        vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                         drop.empty.groups = TRUE) %&gt;%
+               cbind(confint(object = ., level = 0.90))
+
+emigrantes %&gt;%
+ as.data.frame() %&gt;%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))</code></pre>
+<p><strong>Tasa de Inmigración por estado</strong></p>
+<pre class="r fold-show"><code>## Población Total (Lugar de Nacimiento) en el estado
+TI_est &lt;- svyby(~Migrantes,
+                 denominator = ~M,
+                  by = ~CVE_ENT,
+                   svy_design,
+                    svyratio,
+                     vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                      drop.empty.groups = TRUE) %&gt;%
+                cbind(confint(object = ., level = 0.90))
+TI_est %&gt;%
+ as.data.frame() %&gt;%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))</code></pre>
+<p><strong>Tasa de Emigración por estado</strong></p>
+<pre class="r fold-show"><code>## Población Total (Lugar de Nacimiento) en el estado
+TE_est &lt;- svyby(~Migrantes,
+                 denominator = ~PPob,
+                  by = ~ENT_PAIS_NAC,
+                   svy_design,
+                    svyratio,
+                     vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                      drop.empty.groups = TRUE) %&gt;%
+                cbind(confint(object = ., level = 0.90))
+TE_est %&gt;%
+ as.data.frame() %&gt;%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))</code></pre>
+<pre class="r fold-show"><code># Se guardan los resultados
 wb &lt;- createWorkbook()
-addWorksheet(wb, &quot;Lugar de nacimiento  (Total)&quot;)
-addWorksheet(wb, &quot;Lugar de nacimiento (Estados)&quot;)
-writeData(wb, 1, Total_est, colNames = TRUE, rowNames = TRUE)
-writeData(wb, 2, est, colNames = TRUE, rowNames = TRUE)
+addWorksheet(wb, &quot;Residentes (Total)&quot;)
+addWorksheet(wb, &quot;Migrantes (Total)&quot;)
+addWorksheet(wb, &quot;Residentes (Estados)&quot;)
+addWorksheet(wb, &quot;Inmigrantes (Estados)&quot;)
+addWorksheet(wb, &quot;Emigrantes (Estados)&quot;)
+addWorksheet(wb, &quot;T.Inmigrantes (Total)&quot;)
+addWorksheet(wb, &quot;T.Inmigrantes (Estados)&quot;)
+addWorksheet(wb, &quot;T.Emigrantes (Estados)&quot;)
+writeData(wb, 1, Total_Residentes_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, Total_Inmigrantes_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 3, residentes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 4, inmigrantes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 5, emigrantes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 6, TI_Total, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 7, TI_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 8, TE_est, colNames = TRUE, rowNames = TRUE)
 saveWorkbook(wb, 
              file = paste0(here::here(), &quot;/Output/Lugar de nacimiento (Estados).xlsx&quot;), 
              overwrite = TRUE)</code></pre>
