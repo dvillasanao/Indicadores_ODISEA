@@ -1029,7 +1029,7 @@ svy_design <- MC  %>%
 
 **Población total** 
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población de total
 Indicadores_Totales <- svy_design %>%
                         dplyr::summarise(Pob.Total = survey_total(Pob.Total, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
@@ -1039,7 +1039,11 @@ Indicadores <- svy_design %>%
                 group_by(CVE_MUN) %>%
                  dplyr::summarise(Pob.Total = survey_total(Pob.Total, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
 
+```
 
+**Se guardan los resultados** 
+
+```{r, class.source = "fold-hide"}
 # Se guardan los resultados
 wb <- createWorkbook()
 addWorksheet(wb, "Pob.Total (Total)")
@@ -1072,7 +1076,7 @@ svy_design <- MC  %>%
 
 **Población 5 años y más** 
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población de total
 Indicadores_Totales <- svy_design %>%
                         dplyr::summarise(Pob_5ymas = survey_total(Pob.5ymas, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
@@ -1081,8 +1085,11 @@ Indicadores_Totales <- svy_design %>%
 Indicadores <- svy_design %>%
                 group_by(CVE_MUN) %>%
                  dplyr::summarise(Pob_5ymas = survey_total(Pob.5ymas, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+```
 
+**Se guardan los resultados**
 
+```{r, class.source = "fold-hide"}
 # Se guardan los resultados
 wb <- createWorkbook()
 addWorksheet(wb, "Pob_5ymas (Total)")
@@ -1097,10 +1104,7 @@ saveWorkbook(wb,
 
 ## Migración reciente {.tabset .tabset-pills}
 
-### Muestreo Complejo (Opción 1)
-
-
-#### Muestreo Complejo (Opción 2)
+#### Muestreo Complejo (Opción 3)
 
 ```{r}
 MC <- muestra_2020 %>%
@@ -1164,7 +1168,9 @@ OUTPUTFILE XLS "Output\Residencia_Habitual_2020.xlsx" OVERWRITE
 ```
 ````
 
-# Población Total
+# Gráficos  {.tabset .tabset-pills}
+
+## Población total
 
 ```{r}
 Pob.Total <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion interna 2020.xlsx"), startRow = 1, skipEmptyCols = TRUE,
@@ -1205,7 +1211,6 @@ ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_p
 ```
 
 
-# Población Total
 
 ```{r}
 P.Nacimiento <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion interna 2020.xlsx"), startRow = 6, skipEmptyCols = TRUE,
