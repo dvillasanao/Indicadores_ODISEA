@@ -4,12 +4,13 @@ subtitle: "Comparativo microdatos del censo y la muestra"
 author: "CONAPO"
 output:
   html_document:
-  highlight: tango
-theme: flatly
-toc: yes
-toc_depth: 2
-toc_float:
-  collapsed: yes
+    code_folding: hide
+    highlight: tango
+    theme: flatly
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapsed: yes
 ---
   
 \usepackage{color}
@@ -17,10 +18,10 @@ toc_float:
 ```{=html}
 <style>
   code.r{
-    font-size: 10px;
+    font-size: 12px;
  }
 pre{
-  font-size: 10px;
+  font-size: 12px;
   background-color: #F8F3F8  ;
   font-family:"Verdana"; 
   font-weight: plain;
@@ -136,7 +137,7 @@ registerDoMC(cores = 60)
 
 **Cuestionario Ampliado del Censo de Población y Vivienda 2020**
   
-  El cuestionario ampliado se guarda en un un archivo `.RData`.
+El cuestionario ampliado se guarda en un un archivo `.RData`.
 
 ```{r, eval = FALSE}
 data <- read_sav("~/Personas_Censo 2020.SAV")
@@ -354,7 +355,12 @@ svy_design <- MC  %>%
                          #weights = ~FACTOR, 
                           nest = TRUE,
                            probs = ~probs)
+```
 
+
+**Población de 5 años y más** 
+
+```{r, class.source = "fold-hide"}
 ## Población de 5 años y más
 Total_est <- svyby(~Pob.5ymas,
                     by = ~M,
@@ -381,7 +387,11 @@ est <- svyby(~Pob.5ymas,
 est %>%
  as.data.frame() %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
 
+**Se guardan los resultados** 
+
+```{r}
 # Se guardan los resultados
 wb <- createWorkbook()
 addWorksheet(wb, "Pob.5ymas (Total)")
@@ -490,6 +500,7 @@ MC <- mydata %>%
 
 
 ```{r, eval = FALSE}
+require(survey)
 svy_design <- MC  %>%
                svydesign(data = ., 
                           ids = ~UPM, 
@@ -500,7 +511,7 @@ svy_design <- MC  %>%
 
 **Población total**
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población Total (Indicadora de nacimiento)
 Total_Residentes <- svyby(~Residentes,
                                by = ~M,
@@ -528,7 +539,7 @@ Total_Inmigrantes %>%
 
 **Tasa de Inmigración**   
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población Total (Lugar de Nacimiento) en el estado
 TI_Total <- svyby(~Migrantes,
                    denominator = ~M,
@@ -545,7 +556,7 @@ TI_Total %>%
 
 **Residentes por estado** 
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población Total (Lugar de Nacimiento) en el estado
 residentes <- svyby(~Residentes,
                      by = ~CVE_ENT,
@@ -562,7 +573,7 @@ residentes %>%
 
 **Inmigrantes por estado** 
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población Total (Lugar de Nacimiento) en el estado
 inmigrantes <- svyby(~Migrantes,
                        by = ~CVE_ENT,
@@ -579,7 +590,7 @@ inmigrantes %>%
 
 **Emigrantes por estado** 
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población Total (Lugar de Nacimiento) en el estado
 emigrantes <- svyby(~Migrantes,
                      by = ~ENT_PAIS_NAC,
@@ -596,7 +607,7 @@ emigrantes %>%
 
 **Tasa de Inmigración por estado**   
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población Total (Lugar de Nacimiento) en el estado
 TI_est <- svyby(~Migrantes,
                  denominator = ~M,
@@ -613,7 +624,7 @@ TI_est %>%
 
 **Tasa de Emigración por estado**   
 
-```{r}
+```{r, class.source = "fold-hide"}
 ## Población Total (Lugar de Nacimiento) en el estado
 TE_est <- svyby(~Migrantes,
                  denominator = ~PPob,
@@ -631,7 +642,7 @@ TE_est %>%
 
 **Se guardan las base de datos**  
 
-```{r}
+```{r, class.source = "fold-hide"}
 # Se guardan los resultados
 wb <- createWorkbook()
 addWorksheet(wb, "Residentes (Total)")
@@ -653,21 +664,23 @@ writeData(wb, 8, TE_est, colNames = TRUE, rowNames = TRUE)
 saveWorkbook(wb, 
              file = paste0(here::here(), "/Output/Lugar de nacimiento (Estados).xlsx"), 
              overwrite = TRUE)
+rm(Total_Residentes, Total_Inmigrantes, residentes, inmigrantes, emigrantes, TI_Total, TI_est, TE_est)
 ```
 
 
 ### Muestreo Complejo (Opción 2)
 
+La paquetería `srvyr` se centra en calcular estadísticas resumidas a partir de datos de encuestas, como la media, el total o el cuantil. Permite el uso de muchas funciones de la paquetería `dplyr`, como `summarize`, `group_by` y `mutate`, la conveniencia de funciones canalizables, el estilo de evaluación no estándar de rlang y tipos de retorno más consistentes que el paquete de encuestas.   
+
 ```{r}
 require(srvyr)
-
 svy_design <- MC %>%
                srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
 ```
 
 **Inmigrantes** 
 
-```{r}
+```{r, class.source = "fold-hide"}
 Total_Inmigrantes <- svy_design %>%
                       dplyr::summarise(Poblacion_Total = survey_total(M, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                        Residentes = survey_total(Residentes, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
@@ -690,9 +703,11 @@ inmigrantes %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 ```
 
+
+
 **Emigrantes** 
 
-```{r}
+```{r, class.source = "fold-hide"}
 Total_Emigrantes <- svy_design %>%
                      dplyr::summarise(Emigrantes = survey_total(Migrantes, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                       TEmigracion = survey_ratio(numerator = Migrantes, denominator = PPob, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
@@ -707,6 +722,63 @@ emigrantes %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 ```
 
+**Se guardan las base de datos**  
+
+```{r, class.source = "fold-hide"}
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Inmigrantes (Total)")
+addWorksheet(wb, "Inmigrantes (Estados)")
+addWorksheet(wb, "Emigrantes (Total)")
+addWorksheet(wb, "Emigrantes (Estados)")
+writeData(wb, 1, Total_Inmigrantes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, inmigrantes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 3, Total_Emigrantes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 4, emigrantes, colNames = TRUE, rowNames = TRUE)
+
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Lugar de nacimiento (Estados).xlsx"), 
+             overwrite = TRUE)
+```
+
+### Muestreo Complejo (Opción 3)
+
+La paquetería `srvyr` se centra en calcular estadísticas resumidas a partir de datos de encuestas, como la media, el total o el cuantil. Permite el uso de muchas funciones de la paquetería `dplyr`, como `summarize`, `group_by` y `mutate`, la conveniencia de funciones canalizables, el estilo de evaluación no estándar de rlang y tipos de retorno más consistentes que el paquete de encuestas.   
+
+```{r}
+require(srvyr)
+svy_design <- MC %>% 
+               select(ESTRATO, UPM, probs, CVE_ENT, ENT_PAIS_NAC, M, Residentes, Migrantes, PPob) %>%
+                reshape2::melt(., id.vars = c("ESTRATO", "UPM", "probs", "M", "Residentes", "Migrantes", "PPob")) %>%
+                 srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
+```
+
+```{r, class.source = "fold-hide"}
+tabla <- svy_design %>%
+          group_by(value) %>%
+           dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
+                                                        denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
+                                                        vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+                            Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            TEmigracion = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, numerator = Migrantes, denominator = PPob, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            MN = Inmigrantes - Emigrantes,
+                            MB = Inmigrantes + Emigrantes,
+                            TNM = TInmigracion - TEmigracion
+                            TBM = TInmigracion + TEmigracion
+                            Eficacia = ) 
+  ungroup()  %>%
+  mutate(MIGNETA = INMIG - EMIG, 
+         MIGBRUTA = INMIG + EMIG,
+         TASAINMI = ((INMIG/ 5) /((RESHAB + RESREC) / 2))*1000,
+         TASAEMI = ((EMIG/ 5) /((RESHAB + RESREC) / 2))*1000, 
+         TASAMIG = TASAINMI - TASAEMI,
+         EFICACIA = MIGNETA - MIGBRUTA) 
+```
+
+
 # Nivel municipal {.tabset .tabset-pills}
 
 ## Población Total {.tabset .tabset-pills}
@@ -716,70 +788,6 @@ emigrantes %>%
 ## Migración reciente {.tabset .tabset-pills}
 
 ### Muestreo Complejo (Opción 1)
-
-
-```{r, eval = FALSE}
-require(srvyr)
-options(survey.lonely.psu="adjust")
-
-MC <- muestra_2020 %>%
-       as.data.frame() %>%
-        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %>%
-         mutate(EDAD = as.numeric(.$EDAD)) %>%
-      mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
-                                         .$ENT_PAIS_RES_5A %nin% estados ~ "888", #Residencia en otro país
-                                         .$ENT_PAIS_RES_5A %in% "997" ~ "997",
-                                         .$ENT_PAIS_RES_5A %in% "998" ~ "998",
-                                         .$ENT_PAIS_RES_5A %in% "997" ~ "999")) %>% 
-      mutate(I_RES_5A = case_when((.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% estados ~ .$ENT_PAIS_RES_5A,
-                                  (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "888" ~ "888",
-                                  (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "997" ~ "997",
-                                  (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "998" ~ "998",
-                                  (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "999" ~ "999")) %>%
-      mutate(M = 1) 
-
-svy_design <- MC  %>%
-  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, #weights = ~FACTOR, 
-            nest = TRUE, probs = probs)
-#clusterExport(cl, c("MC"))
-#svy_design <- parLapply(cl, 1:length(cl), function(i) {
-# svydesign(data = MC[i:nrow(MC), ], ids = ~UPM, strata = ~ESTRATO, weights = ~FACTOR, nest = TRUE)
-#})
-probs <- svy_design$prob
-svy_design <- MC  %>%
-  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, #weights = ~FACTOR, 
-            nest = TRUE, probs = probs)
-
-#p <- as.svrepdesign(svy_design, type="bootstrap", replicates=100)
-
-#options("survey.ultimate.cluster" = FALSE)
-#p <- as.svrepdesign(svy_design)
-
-require(survey)
-tabla <- svytotal(~M + CVE_ENT, svy_design)
-
-library(fastsurvey)
-fastsurvey::svytotal(~M,
-                     multistage_design)
-
-p <- MC  %>%
-  svrepdesign(data = mydata, ids = ~UPM, strata = ~ESTRATO, weights = ~FACTOR, nest = TRUE) 
-POB_TOT_est <- svytotal(~M,
-                        MC)
-## Población total en el estado 
-POB_TOT_est <- svyby(~M,
-                     by = ~CVE_ENT,
-                     svy_design,
-                     svytotal,
-                     vartype = c("se","cv", "ci"),
-                     level = 0.90
-                     #drop.empty.groups = TRUE 
-                     #na.rm.by = TRUE, 
-                     #multicore=getOption("survey.multicore")
-) #desvest / %CV / Coef. de variación
-
-confint(POB_TOT_est, level = 0.90, df =Inf)
-```
 
 
 #### Muestreo Complejo (Opción 2)
