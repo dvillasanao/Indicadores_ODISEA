@@ -288,7 +288,12 @@ svy_design <- MC  %>%
                           #weights = ~FACTOR, 
                            nest = TRUE,
                             probs = ~probs)
+```
 
+
+**Población total** 
+
+```{r}
 ## Población de total
 Total_est <- svyby(~Pob.Total,
                     by = ~M,
@@ -893,7 +898,9 @@ MC <- mydata %>%
                                             .$ENT_PAIS_RES_5A == "998" ~ "998",
                                             .$ENT_PAIS_RES_5A == "999" ~ "999")) %>%
              # Se clasifica a la población residente de la migrante
-             mutate(Residentes = case_when((.$EDAD >= 5 & .$EDAD <= 130) & I_Residencia %in% "1" ~ 1,
+             mutate(Pob.5ymas = case_when((.$EDAD >= 5 & .$EDAD <= 130) ~ 1,
+                                           TRUE ~ 0),
+                    Residentes = case_when((.$EDAD >= 5 & .$EDAD <= 130) & I_Residencia %in% "1" ~ 1,
                                            TRUE ~ 0),
                     Migrantes = case_when((.$EDAD >= 5 & .$EDAD <= 130) & I_Residencia %in% "2" ~ 1,
                                            TRUE ~ 0))  %>% 
@@ -902,7 +909,7 @@ MC <- mydata %>%
               left_join(., Pob.5ymas %>% 
                             rename("Pob.5ymas_Estados" = "Pob.5ymas"), by = c("ENT_PAIS_RES_5A" = "CVE_ENT")) %>%
                group_by(ENT_PAIS_RES_5A) %>%
-                mutate(Pob.Total.R5a = sum(M * FACTOR)) %>%
+                mutate(Pob.Total.R5a = sum(Pob.5ymas * FACTOR)) %>%
                  ungroup() %>%
                   mutate(PPob = Pob.5ymas_Estados / Pob.Total.R5a)
 ```
@@ -914,10 +921,9 @@ La paquetería `srvyr` se centra en calcular estadísticas resumidas a partir de
 
 ```{r}
 require(srvyr)
-
 svy_design <- MC %>% 
-               select(ESTRATO, UPM, probs, CVE_ENT, ENT_PAIS_RES_5A, M, Residentes, Migrantes, PPob) %>%
-                reshape2::melt(., id.vars = c("ESTRATO", "UPM", "probs", "M", "Residentes", "Migrantes", "PPob")) %>%
+               select(ESTRATO, UPM, probs, CVE_ENT, ENT_PAIS_RES_5A, M, Pob.5ymas, Residentes, Migrantes, PPob) %>%
+                reshape2::melt(., id.vars = c("ESTRATO", "UPM", "probs", "M", "Pob.5ymas", "Residentes", "Migrantes", "PPob")) %>%
                  srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
 ```
 
@@ -926,10 +932,11 @@ svy_design <- MC %>%
 ```{r, class.source = "fold-hide"}
 Indicadores_Totales <- svy_design %>%
                          dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Pob_5ymas = survey_total(ifelse(variable %in% "CVE_ENT", Pob.5ymas, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                           Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                           Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                           TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
-                                                                      denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
+                                                                      denominator = ifelse(variable %in% "CVE_ENT", Pob.5ymas, 0), 
                                                                       vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                           Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                           TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, Migrantes, 0),
@@ -940,7 +947,7 @@ Indicadores_Totales <- svy_design %>%
                                           TNM = TInmigracion - TEmigracion,
                                           TBM = TInmigracion + TEmigracion,
                                           Eficacia = MN - MB
-                                          #IEM = MN/MB
+                                          #IEM = svyratio(numerator = MN, denominator = MB, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE) #Índice de Eficacia Migratoria
                                            ) 
 ```
 
@@ -950,10 +957,11 @@ Indicadores_Totales <- svy_design %>%
 Indicadores <- svy_design %>%
                 group_by(value) %>%
                  dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Pob_5ymas = survey_total(ifelse(variable %in% "CVE_ENT", Pob.5ymas, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                   Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                   Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                   TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
-                                                              denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
+                                                              denominator = ifelse(variable %in% "CVE_ENT", Pob.5ymas, 0), 
                                                               vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                   Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                   TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, Migrantes, 0),
@@ -987,7 +995,105 @@ saveWorkbook(wb,
 
 ## Población Total {.tabset .tabset-pills}
 
+Estructura de la población por estado. Utilizando REDATAM.  
+
+````
+```{r}`r ''`
+/*DAMERES (División Administrativa Menores de Residencia)*/
+DEFINE PERSONA.DAMERES
+	AS MUN.REDCODEN
+	TYPE INTEGER
+	RANGE (1001:32058)
+  FILTER MUN.REDCODEN <> 4012 AND MUN.REDCODEN <> 7125 AND MUN.REDCODEN <> 29048
+  VARLABEL "Municipio de residencia"
+	LIKE MUN.REDCODEN
+SAVE "variables\DAMERES.rbf"
+OVERWRITE
+GROUP MIGRACION
+```
+````
+
+```{r}
+options(survey.lonely.psu = "adjust")
+
+MC <- mydata %>%
+       as.data.frame() %>%
+        select(FACTOR, ESTRATO, UPM, CVE_MUN) %>%
+         mutate(probs = 1/.$FACTOR) %>%
+          mutate(Pob.Total = 1) 
+
+svy_design <- MC  %>%
+               srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
+```
+
+
+**Población total** 
+
+```{r}
+## Población de total
+Indicadores_Totales <- svy_design %>%
+                        dplyr::summarise(Pob.Total = survey_total(Pob.Total, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+
+## Población total en los municipios
+Indicadores <- svy_design %>%
+                group_by(CVE_MUN) %>%
+                 dplyr::summarise(Pob.Total = survey_total(Pob.Total, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+
+
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Pob.Total (Total)")
+addWorksheet(wb, "Pob.Total (Municipios)")
+writeData(wb, 1, Indicadores_Totales, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, Indicadores, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Poblacion Total (Municipios).xlsx"), 
+             overwrite = TRUE)
+```
+
 ## Población 5 años y más {.tabset .tabset-pills}
+
+```{r}
+options(survey.lonely.psu = "adjust")
+
+MC <- mydata %>%
+       as.data.frame() %>%
+        select(FACTOR, ESTRATO, UPM, CVE_MUN, EDAD) %>%
+         mutate(probs = 1/.$FACTOR) %>%
+          mutate(EDAD = as.numeric(.$EDAD), 
+                 M = 1) %>%
+           mutate(Pob.5ymas = case_when(.$EDAD >= 5 & .$EDAD <= 130 ~ 1,
+                                   TRUE ~  0)) 
+
+svy_design <- MC  %>%
+               srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
+```
+
+
+**Población 5 años y más** 
+
+```{r}
+## Población de total
+Indicadores_Totales <- svy_design %>%
+                        dplyr::summarise(Pob_5ymas = survey_total(Pob.5ymas, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+
+## Población total en los municipios
+Indicadores <- svy_design %>%
+                group_by(CVE_MUN) %>%
+                 dplyr::summarise(Pob_5ymas = survey_total(Pob.5ymas, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+
+
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Pob_5ymas (Total)")
+addWorksheet(wb, "Pob_5ymas (Municipios)")
+writeData(wb, 1, Indicadores_Totales, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, Indicadores, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Poblacion de 5 años y más (Municipios).xlsx"), 
+             overwrite = TRUE)
+```
+
 
 ## Migración reciente {.tabset .tabset-pills}
 
@@ -1298,7 +1404,43 @@ MRes5 <- MRes5  %>%
 names(MRes5)
 ```
 
+**Población total** 
 
+```{r}
+## Población de total
+Total_est <- svyby(~Pob.Total,
+                    by = ~M,
+                     svy_design,
+                      svytotal,
+                       vartype = c("se","cv"),
+                        drop.empty.groups = TRUE) %>%
+              cbind(confint(object = ., level = 0.90))
+
+Total_est %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+
+## Población total en el estado 
+est <- svyby(~Pob.Total,
+              by = ~CVE_ENT,
+               svy_design,
+                svytotal,
+                 vartype = c("se","cv"),
+                  drop.empty.groups = TRUE) %>%
+        cbind(confint(object = ., level = 0.90))
+
+est %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Pob.Total (Estados)")
+writeData(wb, 1, est, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Poblacion Total (Estados).xlsx"), 
+             overwrite = TRUE)
+```
 ## Residentes
 
 ```{r}
