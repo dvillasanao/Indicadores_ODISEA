@@ -752,6 +752,37 @@ svy_design <- MC %>%
                 reshape2::melt(., id.vars = c("ESTRATO", "UPM", "probs", "M", "Residentes", "Migrantes", "PPob")) %>%
                  srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
 ```
+```{r, class.source = "fold-hide"}
+tabla <- svy_design %>%
+           dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
+                                                        denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
+                                                        vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0),
+                                                       denominator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, PPob, 0), 
+                                                       vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            MN = Inmigrantes - Emigrantes,
+                            MB = Inmigrantes + Emigrantes,
+                            TNM = TInmigracion - TEmigracion,
+                            TBM = TInmigracion + TEmigracion,
+                            Eficacia = MN - MB,
+                            IEM = svyratio(numerator = MN, denominator = MB, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE) #Índice de Eficacia Migratoria
+                             ) 
+```
+**Se guardan los resultados** 
+
+```{r, class.source = "fold-hide"}
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Lugar de Nacimiento")
+writeData(wb, 1, tabla, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Lugar de nacimiento (Total)_Indicadores.xlsx"), 
+             overwrite = TRUE)
+```
 
 ```{r, class.source = "fold-hide"}
 tabla <- svy_design %>%
@@ -761,21 +792,123 @@ tabla <- svy_design %>%
                             Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                             TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
                                                         denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
-                                                        vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+                                                        vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                             Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            TEmigracion = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, numerator = Migrantes, denominator = PPob, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                            TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0),
+                                                       denominator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, PPob, 0), 
+                                                       vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                             MN = Inmigrantes - Emigrantes,
                             MB = Inmigrantes + Emigrantes,
-                            TNM = TInmigracion - TEmigracion
+                            TNM = TInmigracion - TEmigracion,
                             TBM = TInmigracion + TEmigracion
-                            Eficacia = ) 
-  ungroup()  %>%
-  mutate(MIGNETA = INMIG - EMIG, 
-         MIGBRUTA = INMIG + EMIG,
-         TASAINMI = ((INMIG/ 5) /((RESHAB + RESREC) / 2))*1000,
-         TASAEMI = ((EMIG/ 5) /((RESHAB + RESREC) / 2))*1000, 
-         TASAMIG = TASAINMI - TASAEMI,
-         EFICACIA = MIGNETA - MIGBRUTA) 
+                            #Eficacia = MN - MB,
+                            #IEM = svyratio(numerator = MN, denominator = MB, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE) #Índice de Eficacia Migratoria
+                             ) 
+```
+
+
+**Se guardan los resultados** 
+
+```{r, class.source = "fold-hide"}
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Lugar de Nacimiento")
+writeData(wb, 1, tabla, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Lugar de nacimiento (Estados)_Indicadores.xlsx"), 
+             overwrite = TRUE)
+```
+
+
+## Migración reciente {.tabset .tabset-pills}
+
+Para poder clasificiar a la matriz de nacimiento, es importante clasificar a los:    
+
+- Residentes  (Diagonal de la matriz).     
+- Inmigrantes (Entran al lugar de residencia habitual 2020).   
+- Emigrantes (Salen del lugar de residencia habitual 2020).  
+
+En esta clasificiación es tener controlados a los que nacieron en otro país o los no especificados. 
+
+Estructura utilizando REDATAM.  
+
+````
+```{r}`r ''`
+/*DAMRES5 (División Administrativa Mayor de residencia anterior) */
+DEFINE PERSONA.DAMRES5
+	AS RECODE PERSONA.ENT_PAIS_RES_5A
+      (33: HIGHEST = 0)
+  FILTER PERSONA.EDAD >= 5 AND PERSONA.EDAD <= 130
+  NOTAPPLICABLE 0
+  DEFAULT 0
+	TYPE INTEGER
+	RANGE (1:32)
+  VARLABEL "Entidad de residencia hace 5 años"
+	LIKE PERSONA.ENT_PAIS_RES_5A
+SAVE "variables\DAMRES5.rbf"
+OVERWRITE
+GROUP MIGRACION
+```
+````
+
+````
+```{r}`r ''`
+//Nivel DAME-Matriz migración Reciente	
+TABLE MB_REC_DAME
+		FREQ DAMERES BY DAMERES5
+		FILTER EDAD > 4 AND DAMERES > 0 AND DAMERES5 > 0
+		ZERO
+		TITLE "MATRIZ MIGRACIÓN RECIENTE"
+		OUTPUTFILE JSON "MIGINT\MINT-MB-REC-DAME.JSON" OVERWRITE
+```
+````
+
+
+**Clasificación de las variables para el muestreo complejo**
+
+```{r}
+options(survey.lonely.psu = "adjust")
+
+# Se almacena a la población de 5 años y más del lugar de residencia habitual a nivel estatal
+Pob.5ymas <- mydata%>%
+              group_by(CVE_ENT) %>%
+               filter(.$EDAD >= 5 & .$EDAD <= 130) %>%
+                mutate(Pob.5ymas = sum(M * FACTOR)) %>%
+                 ungroup() %>%
+                  distinct(., CVE_ENT, Pob.Total) 
+
+MC <- mydata %>%
+       as.data.frame() %>%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %>%
+         mutate(probs = 1/.$FACTOR) %>%
+          mutate(EDAD = as.numeric(.$EDAD)) %>%
+           mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
+                                              .$ENT_PAIS_RES_5A %in% "997" ~ "997",
+                                              .$ENT_PAIS_RES_5A %in% "998" ~ "998",
+                                              .$ENT_PAIS_RES_5A %in% "999" ~ "999",
+                                              .ENT_PAIS_RES_5A %nin% estados ~ "888", #Residencia en otro país
+                                               )) %>% 
+            mutate(I_Residencia = case_when(.$CVE_ENT == .$ENT_PAIS_RES_5A ~ "1",
+                                            .$CVE_ENT != .$ENT_PAIS_RES_5A & (.$ENT_PAIS_RES_5A %nin% c("888", "997", "998", "999")) ~ "2",
+                                            .$ENT_PAIS_RES_5A == "888" ~ "888",
+                                            .$ENT_PAIS_RES_5A == "997" ~ "997",
+                                            .$ENT_PAIS_RES_5A == "998" ~ "998",
+                                            .$ENT_PAIS_RES_5A == "999" ~ "999")) %>%
+             # Se clasifica a la población residente de la migrante
+             mutate(Residentes = case_when((.$EDAD >= 5 & .$EDAD <= 130) & I_Residencia %in% "1" ~ 1,
+                                           TRUE ~ 0),
+                    Migrantes = case_when((.$EDAD >= 5 & .$EDAD <= 130) & I_Residencia %in% "2" ~ 1,
+                                           TRUE ~ 0))  %>% 
+             # Se agrupa a la población total de acuerdo al lugar de residencia habitual y de nacimiento, para el calculo
+             # de las tasas de emigación
+              left_join(., POB_TOT %>% 
+                            rename("Pob.5ymas_Estados" = "Pob.5ymas"), by = c("ENT_PAIS_RES_5A" = "CVE_ENT")) %>%
+               group_by(ENT_PAIS_RES_5A) %>%
+                mutate(Pob.Total.R5a = sum(M * FACTOR)) %>%
+                 ungroup() %>%
+                  mutate(PPob = Pob.5ymas_Estados / Pob.Total.R5a)
+   
+             
 ```
 
 
