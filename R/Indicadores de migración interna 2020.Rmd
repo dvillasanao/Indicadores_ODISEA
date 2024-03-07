@@ -752,58 +752,53 @@ svy_design <- MC %>%
                 reshape2::melt(., id.vars = c("ESTRATO", "UPM", "probs", "M", "Residentes", "Migrantes", "PPob")) %>%
                  srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
 ```
-```{r, class.source = "fold-hide"}
-tabla <- svy_design %>%
-           dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
-                                                        denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
-                                                        vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0),
-                                                       denominator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, PPob, 0), 
-                                                       vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            MN = Inmigrantes - Emigrantes,
-                            MB = Inmigrantes + Emigrantes,
-                            TNM = TInmigracion - TEmigracion,
-                            TBM = TInmigracion + TEmigracion,
-                            Eficacia = MN - MB,
-                            IEM = svyratio(numerator = MN, denominator = MB, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE) #Índice de Eficacia Migratoria
-                             ) 
-```
-**Se guardan los resultados** 
+
+
+**Indicadores de migración para toda la vida (Total)**
 
 ```{r, class.source = "fold-hide"}
-# Se guardan los resultados
-wb <- createWorkbook()
-addWorksheet(wb, "Lugar de Nacimiento")
-writeData(wb, 1, tabla, colNames = TRUE, rowNames = TRUE)
-saveWorkbook(wb, 
-             file = paste0(here::here(), "/Output/Lugar de nacimiento (Total)_Indicadores.xlsx"), 
-             overwrite = TRUE)
+Indicadores_Totales <- svy_design %>%
+                        dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                         Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                         Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                         TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
+                                                                     denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
+                                                                     vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                         Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE), 
+                                         TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0),
+                                                                    denominator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, PPob, 0), 
+                                                                    vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                         MN = Inmigrantes - Emigrantes,
+                                         MB = Inmigrantes + Emigrantes,
+                                         TNM = TInmigracion - TEmigracion,
+                                         TBM = TInmigracion + TEmigracion,
+                                         Eficacia = MN - MB
+                                         ) 
 ```
 
+
+**Indicadores de migración para toda la vida (Estados)**
+
 ```{r, class.source = "fold-hide"}
-tabla <- svy_design %>%
-          group_by(value) %>%
-           dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
-                                                        denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
-                                                        vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0),
-                                                       denominator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, PPob, 0), 
-                                                       vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                            MN = Inmigrantes - Emigrantes,
-                            MB = Inmigrantes + Emigrantes,
-                            TNM = TInmigracion - TEmigracion,
-                            TBM = TInmigracion + TEmigracion
-                            #Eficacia = MN - MB,
-                            #IEM = svyratio(numerator = MN, denominator = MB, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE) #Índice de Eficacia Migratoria
-                             ) 
+Indicadores <- svy_design %>%
+                group_by(value) %>%
+                 dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
+                                                              denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
+                                                              vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, Migrantes, 0),
+                                                             denominator = ifelse(variable %in% "ENT_PAIS_NAC" & value %in% estados, PPob, 0), 
+                                                             vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  MN = Inmigrantes - Emigrantes,
+                                  MB = Inmigrantes + Emigrantes,
+                                  TNM = TInmigracion - TEmigracion,
+                                  TBM = TInmigracion + TEmigracion,
+                                  Eficacia = MN - MB
+                                  #IEM = svyratio(numerator = MN, denominator = MB, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE) #Índice de Eficacia Migratoria
+                                   ) 
 ```
 
 
@@ -812,8 +807,10 @@ tabla <- svy_design %>%
 ```{r, class.source = "fold-hide"}
 # Se guardan los resultados
 wb <- createWorkbook()
-addWorksheet(wb, "Lugar de Nacimiento")
-writeData(wb, 1, tabla, colNames = TRUE, rowNames = TRUE)
+addWorksheet(wb, "Lugar de Nacimiento (Total)")
+addWorksheet(wb, "Lugar de Nacimiento (Estados)")
+writeData(wb, 1, Indicadores_Totales, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, Indicadores, colNames = TRUE, rowNames = TRUE)
 saveWorkbook(wb, 
              file = paste0(here::here(), "/Output/Lugar de nacimiento (Estados)_Indicadores.xlsx"), 
              overwrite = TRUE)
@@ -871,22 +868,23 @@ options(survey.lonely.psu = "adjust")
 
 # Se almacena a la población de 5 años y más del lugar de residencia habitual a nivel estatal
 Pob.5ymas <- mydata%>%
-              group_by(CVE_ENT) %>%
-               filter(.$EDAD >= 5 & .$EDAD <= 130) %>%
+              filter(.$EDAD >= 5 & .$EDAD <= 130) %>%
+               group_by(CVE_ENT) %>%
                 mutate(Pob.5ymas = sum(M * FACTOR)) %>%
                  ungroup() %>%
-                  distinct(., CVE_ENT, Pob.Total) 
+                  distinct(., CVE_ENT, Pob.5ymas) 
 
 MC <- mydata %>%
        as.data.frame() %>%
-        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %>%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD, M) %>%
          mutate(probs = 1/.$FACTOR) %>%
           mutate(EDAD = as.numeric(.$EDAD)) %>%
-           mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
+           mutate(ENT_PAIS_RES_5A = case_when(nchar(.$ENT_PAIS_RES_5A) == 0 ~ NA,
+                                              .$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
                                               .$ENT_PAIS_RES_5A %in% "997" ~ "997",
                                               .$ENT_PAIS_RES_5A %in% "998" ~ "998",
                                               .$ENT_PAIS_RES_5A %in% "999" ~ "999",
-                                              .ENT_PAIS_RES_5A %nin% estados ~ "888", #Residencia en otro país
+                                              .$ENT_PAIS_RES_5A %nin% c(estados, "997", "998", "999") ~ "888" #Residencia en otro país
                                                )) %>% 
             mutate(I_Residencia = case_when(.$CVE_ENT == .$ENT_PAIS_RES_5A ~ "1",
                                             .$CVE_ENT != .$ENT_PAIS_RES_5A & (.$ENT_PAIS_RES_5A %nin% c("888", "997", "998", "999")) ~ "2",
@@ -901,16 +899,89 @@ MC <- mydata %>%
                                            TRUE ~ 0))  %>% 
              # Se agrupa a la población total de acuerdo al lugar de residencia habitual y de nacimiento, para el calculo
              # de las tasas de emigación
-              left_join(., POB_TOT %>% 
+              left_join(., Pob.5ymas %>% 
                             rename("Pob.5ymas_Estados" = "Pob.5ymas"), by = c("ENT_PAIS_RES_5A" = "CVE_ENT")) %>%
                group_by(ENT_PAIS_RES_5A) %>%
                 mutate(Pob.Total.R5a = sum(M * FACTOR)) %>%
                  ungroup() %>%
                   mutate(PPob = Pob.5ymas_Estados / Pob.Total.R5a)
-   
-             
 ```
 
+
+### Muestreo Complejo (Opción 3)
+
+La paquetería `srvyr` se centra en calcular estadísticas resumidas a partir de datos de encuestas, como la media, el total o el cuantil. Permite el uso de muchas funciones de la paquetería `dplyr`, como `summarize`, `group_by` y `mutate`, la conveniencia de funciones canalizables, el estilo de evaluación no estándar de rlang y tipos de retorno más consistentes que el paquete de encuestas.   
+
+```{r}
+require(srvyr)
+
+svy_design <- MC %>% 
+               select(ESTRATO, UPM, probs, CVE_ENT, ENT_PAIS_RES_5A, M, Residentes, Migrantes, PPob) %>%
+                reshape2::melt(., id.vars = c("ESTRATO", "UPM", "probs", "M", "Residentes", "Migrantes", "PPob")) %>%
+                 srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
+```
+
+**Indicadores de migración reciente hace 5 años (Total)** 
+
+```{r, class.source = "fold-hide"}
+Indicadores_Totales <- svy_design %>%
+                         dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
+                                                                      denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
+                                                                      vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, Migrantes, 0),
+                                                                     denominator = ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, PPob, 0), 
+                                                                     vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          MN = Inmigrantes - Emigrantes,
+                                          MB = Inmigrantes + Emigrantes,
+                                          TNM = TInmigracion - TEmigracion,
+                                          TBM = TInmigracion + TEmigracion,
+                                          Eficacia = MN - MB
+                                          #IEM = MN/MB
+                                           ) 
+```
+
+**Indicadores de migración reciente hace 5 años (Estados)** 
+
+```{r, class.source = "fold-hide"}
+Indicadores <- svy_design %>%
+                group_by(value) %>%
+                 dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_ENT", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Residentes = survey_total(ifelse(variable %in% "CVE_ENT", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Inmigrantes = survey_total(ifelse(variable %in% "CVE_ENT", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_ENT", Migrantes, 0),
+                                                              denominator = ifelse(variable %in% "CVE_ENT", M, 0), 
+                                                              vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  Emigrantes = survey_total(ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  TEmigracion = survey_ratio(numerator = ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, Migrantes, 0),
+                                                             denominator = ifelse(variable %in% "ENT_PAIS_RES_5A" & value %in% estados, PPob, 0), 
+                                                             vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                  MN = Inmigrantes - Emigrantes,
+                                  MB = Inmigrantes + Emigrantes,
+                                  TNM = TInmigracion - TEmigracion,
+                                  TBM = TInmigracion + TEmigracion,
+                                  Eficacia = MN - MB
+                                  #IEM = svyratio(numerator = MN, denominator = MB, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE) #Índice de Eficacia Migratoria
+                                   ) 
+```
+
+
+**Se guardan los resultados** 
+
+```{r, class.source = "fold-hide"}
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Lugar de Residencia (Totales")
+addWorksheet(wb, "Lugar de Residencia (Estados")
+writeData(wb, 1, Indicadores_Totales, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, Indicadores, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Lugar de residencia (Estados)_Indicadores.xlsx"), 
+             overwrite = TRUE)
+```
 
 # Nivel municipal {.tabset .tabset-pills}
 
