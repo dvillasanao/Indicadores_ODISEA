@@ -184,11 +184,11 @@ Se carga el archivo `Migracion interna_2020.RData`.
 load(file = paste0(here::here(), "/Bases/01_Migracion interna_2020.RData"))
 
 # Para fines prácticos se genera un ponderador de uno 
-muestra_2020 <- mydata %>%
-  select(CVE_ENT, ENT, MUN, CVE_MUN, LOC50K, COBERTURA, ENT_PAIS_NAC, ENT_PAIS_RES_5A, MUN_RES_5A, CVE_MUN_RES15, EDAD, COBERTURA, FACTOR, ESTRATO, UPM) %>%
-  mutate(M = 1)  %>%
-  mutate(NOM_ENT = as.factor(.$CVE_ENT)) %>%
-  ungroup()
+mydata <- mydata %>%
+           select(CVE_ENT, ENT, MUN, CVE_MUN, LOC50K, COBERTURA, ENT_PAIS_NAC, ENT_PAIS_RES_5A, MUN_RES_5A, CVE_MUN_RES15, EDAD, COBERTURA, FACTOR, ESTRATO, UPM) %>%
+           mutate(M = 1)  %>%
+            mutate(NOM_ENT = as.factor(.$CVE_ENT)) %>%
+             ungroup()
 ```
 
 **Claves de entidades y municipios**
@@ -199,7 +199,7 @@ Se genera un vector con las claves de los municipios, pero es importante hacer n
 
 ```{r}
 # Claves de los estados
-estados <- sjlabelled::get_labels(muestra_2020$CVE_ENT)
+estados <- sjlabelled::get_labels(mydata$CVE_ENT)
 nom_estados <- c( "Aguascalientes", "Baja California" ,"Baja California Sur", "Campeche", "Coahuila de Zaragoza",
                   "Colima", "Chiapas", "Chihuahua", "Ciudad de México", "Durango", 
                   "Guanajuato", "Guerrero", "Hidalgo", "Jalisco",  "México", 
@@ -275,42 +275,43 @@ OUTPUTFILE XLS "Output\Residencia_Habitual a nivel estatal_2020.xlsx" OVERWRITE
 ```{r}
 options(survey.lonely.psu = "adjust")
 
-MC <- muestra_2020 %>%
-  as.data.frame() %>%
-  select(FACTOR, ESTRATO, UPM, CVE_ENT) %>%
-  mutate(probs = 1/.$FACTOR) %>%
-  mutate(Pob.Total = 1) 
+MC <- mydata %>%
+       as.data.frame() %>%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT) %>%
+         mutate(probs = 1/.$FACTOR) %>%
+          mutate(Pob.Total = 1,
+                 M = 1) 
 
 svy_design <- MC  %>%
-  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
-            #weights = ~FACTOR, 
-            nest = TRUE,
-            probs = ~probs)
+               svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
+                          #weights = ~FACTOR, 
+                           nest = TRUE,
+                            probs = ~probs)
 
 ## Población de total
 Total_est <- svyby(~Pob.Total,
-                   by = ~M,
-                   svy_design,
-                   svytotal,
-                   vartype = c("se","cv"),
-                   drop.empty.groups = TRUE) %>%
-  cbind(confint(object = ., level = 0.90))
+                    by = ~M,
+                     svy_design,
+                      svytotal,
+                       vartype = c("se","cv"),
+                        drop.empty.groups = TRUE) %>%
+              cbind(confint(object = ., level = 0.90))
 
 Total_est %>%
-  as.data.frame() %>%
+ as.data.frame() %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 
 ## Población total en el estado 
 est <- svyby(~Pob.Total,
-             by = ~CVE_ENT,
-             svy_design,
-             svytotal,
-             vartype = c("se","cv"),
-             drop.empty.groups = TRUE) %>%
-  cbind(confint(object = ., level = 0.90))
+              by = ~CVE_ENT,
+               svy_design,
+                svytotal,
+                 vartype = c("se","cv"),
+                  drop.empty.groups = TRUE) %>%
+        cbind(confint(object = ., level = 0.90))
 
 est %>%
-  as.data.frame() %>%
+ as.data.frame() %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 
 # Se guardan los resultados
@@ -335,58 +336,58 @@ TITLE "RESIDENCIA HABITUAL"
 OUTPUTFILE XLS "Output\Poblacion 5 años y mas a nivel estatal_2020.xlsx" OVERWRITE
 ```
 ````
+
 ```{r}
 options(survey.lonely.psu = "adjust")
 
-MC <- muestra_2020 %>%
-  as.data.frame() %>%
-  select(FACTOR, ESTRATO, UPM, CVE_ENT, EDAD) %>%
-  mutate(probs = 1/.$FACTOR) %>%
-  mutate(EDAD = as.numeric(.$EDAD), 
-         M = 1) %>%
-  mutate(Pob.5ymas = case_when(.$EDAD >= 5 & .$EDAD <= 130 ~ 1,
-                               TRUE ~  0)) 
+MC <- mydata %>%
+       as.data.frame() %>%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, EDAD) %>%
+         mutate(probs = 1/.$FACTOR) %>%
+          mutate(EDAD = as.numeric(.$EDAD), 
+                 M = 1) %>%
+           mutate(Pob.5ymas = case_when(.$EDAD >= 5 & .$EDAD <= 130 ~ 1,
+                                   TRUE ~  0)) 
 
 svy_design <- MC  %>%
-  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
-            #weights = ~FACTOR, 
-            nest = TRUE,
-            probs = ~probs)
+               svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
+                         #weights = ~FACTOR, 
+                          nest = TRUE,
+                           probs = ~probs)
 
 ## Población de 5 años y más
 Total_est <- svyby(~Pob.5ymas,
-                   by = ~M,
-                   svy_design,
-                   svytotal,
-                   vartype = c("se","cv"),
-                   drop.empty.groups = TRUE) %>%
-  cbind(confint(object = ., level = 0.90))
+                    by = ~M,
+                     svy_design,
+                      svytotal,
+                       vartype = c("se","cv"),
+                        drop.empty.groups = TRUE) %>%
+              cbind(confint(object = ., level = 0.90))
 
 Total_est %>% 
-  as.data.frame() %>%
+ as.data.frame() %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 
 
 ## Población de 5 años y más en el estado 
 est <- svyby(~Pob.5ymas,
-             by = ~CVE_ENT,
-             svy_design,
-             svytotal,
-             vartype = c("se","cv"),
-             drop.empty.groups = TRUE) %>%
-  cbind(confint(object = ., level = 0.90))
+              by = ~CVE_ENT,
+               svy_design,
+                svytotal,
+                 vartype = c("se","cv"),
+                  drop.empty.groups = TRUE) %>%
+        cbind(confint(object = ., level = 0.90))
 
 est %>%
-  as.data.frame() %>%
+ as.data.frame() %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 
 # Se guardan los resultados
 wb <- createWorkbook()
 addWorksheet(wb, "Pob.5ymas (Total)")
 addWorksheet(wb, "Pob.5ymas (Estados)")
-writeData(wb, 1, est, colNames = TRUE, rowNames = TRUE)
-writeData(wb, 1, est, colNames = TRUE, rowNames = TRUE)
-
+writeData(wb, 1, Total_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, est, colNames = TRUE, rowNames = TRUE)
 saveWorkbook(wb, 
              file = paste0(here::here(), "/Output/Pob.5ymas (Estados).xlsx"), 
              overwrite = TRUE)
@@ -394,17 +395,155 @@ saveWorkbook(wb,
 
 ## Migración nacimiento {.tabset .tabset-pills}
 
-Se utiliza la paquetería `survey` para poder trabajar con la muestra del cuestionario ampliado, en la cual se selecciona a la población de 5 años y más.
+Para poder clasificiar a la matriz de nacimiento, es importante clasificar a los:
+- Residentes  (Diagonal de la matriz).     
+- Inmigrantes (Entran al lugar de residencia habitual 2020).   
+- Emigrantes (Salen del lugar de residencia habitual 2020).  
+
+En esta clasificiación es tener controlados a los que nacieron en otro país o los no especificados. 
+
+Estructura de la población total. Utilizando REDATAM.  
+
+````
+```{r}`r ''`
+/*DAMNAC  (División Administrativa Mayor de Nacimiento)  */
+DEFINE PERSONA.DAMNAC
+	AS SWITCH
+     INCASE PERSONA.ENT_PAIS_NAC > 32
+     ASSIGN 0
+     INCASE PERSONA.ENT_PAIS_NAC <= 32 
+     ASSIGN PERSONA.ENT_PAIS_NAC
+  NOTAPPLICABLE 0
+  MISSING 1
+  DEFAULT 0
+	TYPE INTEGER
+	RANGE (1:32)
+  VARLABEL "Entidad de nacimiento"
+	LIKE PERSONA.ENT_PAIS_NAC
+SAVE "variables\DAMNAC.rbf"
+OVERWRITE
+GROUP MIGRACION
+```
+````
+
+````
+```{r}`r ''`
+//Nivel DAM-indicadores migración toda la vida
+TABLE MB_NAC_DAM
+FREQ DAMRES BY DAMNAC
+FILTER DAMRES > 0 AND DAMNAC > 0
+ZERO
+TITLE "MATRIZ MIGRACIÓN TODA LA VIDA"
+OUTPUTFILE JSON "MIGINT\MINT-MB-NAC-DAM.JSON" OVERWRITE
+```
+````
 
 ### Muestreo Complejo (Opción 1)
 
 
 ```{r, eval = FALSE}
-require(srvyr)
-options(survey.lonely.psu="adjust")
-options(survey.lonely.psu="certainty")
-options("survey.ultimate.cluster" = FALSE)
+options(survey.lonely.psu = "adjust")
 
+# Se almacena a la población total del lugar de residencia habitual a nivel estatal
+POB_TOT <- mydata%>%
+            group_by(CVE_ENT) %>%
+             mutate(Pob.Total = sum(M * FACTOR)) %>%
+              ungroup() %>%
+               distinct(., CVE_ENT, Pob.Total) 
+
+MC <- mydata %>%
+       as.data.frame() %>%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_NAC, EDAD) %>%
+         mutate(probs = 1/.$FACTOR) %>%
+          mutate(EDAD = as.numeric(.$EDAD),
+                 M = 1) %>%
+           mutate(ENT_PAIS_NAC = case_when(.$ENT_PAIS_NAC %in% estados ~.$ENT_PAIS_NAC,
+                                           .$ENT_PAIS_NAC %in% "997" ~ "997",
+                                           .$ENT_PAIS_NAC %in% "998" ~ "998",
+                                           .$ENT_PAIS_NAC %in% "999" ~ "999",
+                                           .$ENT_PAIS_NAC %nin% estados ~ "888", #Residencia en otro país
+                                           )) %>% 
+            mutate(I_Nacimiento = case_when(.$CVE_ENT == .$ENT_PAIS_NAC ~ "1",
+                                           .$CVE_ENT != .$ENT_PAIS_NAC & (.$ENT_PAIS_NAC %nin% c("888", "997", "998", "999")) ~ "2",
+                                           .$ENT_PAIS_NAC == "888" ~ "888",
+                                           .$ENT_PAIS_NAC == "997" ~ "997",
+                                           .$ENT_PAIS_NAC == "998" ~ "998",
+                                           .$ENT_PAIS_NAC == "999" ~ "999")) %>%
+             # Se clasifica a la población residente de la migrante
+             mutate(Residentes = case_when(I_Nacimiento %in% "1" ~ 1,
+                                           TRUE ~ 0),
+                    Migrantes = case_when(I_Nacimiento %in% "2" ~ 1,
+                                           TRUE ~ 0))  %>% 
+             # Se agrupa a la población total de acuerdo al lugar de residencia habitual y de nacimiento, para el calculo
+             # de las tasas de emigación
+              left_join(., POB_TOT %>% 
+                            rename("Pob.Total_Estados" = "Pob.Total"), by = c("ENT_PAIS_NAC" = "CVE_ENT")) %>%
+               group_by(ENT_PAIS_NAC) %>%
+                mutate(Pob.Total.Nacimiento = sum(M * FACTOR)) %>%
+                 ungroup() %>%
+                  mutate(PPob = Pob.Total_Estados / Pob.Total.Nacimiento)
+   
+                
+svy_design <- MC  %>%
+               svydesign(data = ., 
+                          ids = ~UPM, 
+                           strata = ~ESTRATO, 
+                            probs = ~probs,
+                             nest = TRUE)
+
+## Población Total (Indicadora de nacimiento)
+Total_Residentes_est <- svyby(~Residentes,
+                               by = ~M,
+                                svy_design,
+                                 svytotal,
+                                  vartype = c("se","cv"),
+                                   drop.empty.groups = TRUE) %>%
+                          cbind(confint(object = ., level = 0.90))
+Total_Residentes_est %>% 
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+
+Total_Inmigrantes_est <- svyby(~Residentes,
+                                by = ~M,
+                                 svy_design,
+                                  svytotal,
+                                   vartype = c("se","cv"),
+                                    drop.empty.groups = TRUE) %>%
+                           cbind(confint(object = ., level = 0.90))
+
+Total_Inmigrantes_est %>% 
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+
+## Población de 5 años y más en el estado 
+est <- svyby(~I_Nacimiento,
+              by = ~CVE_ENT,
+               svy_design,
+                svytotal,
+                 vartype = c("se","cv", "ci", "ci"),
+                  quantiles = 0.1, ci=TRUE,
+                  drop.empty.groups = TRUE)
+         cbind(confint(object = est, level = 0.90))
+
+est %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Lugar de nacimiento  (Total)")
+addWorksheet(wb, "Lugar de nacimiento (Estados)")
+writeData(wb, 1, Total_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, est, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Lugar de nacimiento (Estados).xlsx"), 
+             overwrite = TRUE)
+```
+
+
+#### Muestreo Complejo (Opción 2)
+
+```{r}
 MC <- muestra_2020 %>%
   as.data.frame() %>%
   select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %>%
@@ -419,7 +558,68 @@ MC <- muestra_2020 %>%
                               (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "997" ~ "997",
                               (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "998" ~ "998",
                               (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "999" ~ "999")) %>%
-  mutate(M = 1) 
+  mutate(CVE_ENTS = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A)) %>%
+  mutate(M = 1) %>%
+  mutate(RESHAB = 1,
+         RESREC = case_when(EDAD >= 5 & EDAD <= 130 ~ 1,
+                            TRUE ~ NA),
+         MIG = case_when(.$CVE_ENT !=.$ENT_PAIS_RES_5A  & (EDAD >= 5 & EDAD <= 130) ~ 1,
+                         TRUE ~ NA),
+         NOMIGRA = case_when(.$CVE_ENT ==.$ENT_PAIS_RES_5A & (EDAD >= 5 & EDAD <= 130) ~ 1,
+                             TRUE ~ NA)) 
+MC <- MC %>%
+  as.data.frame() %>%
+  select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, RESHAB, RESREC,  MIG, NOMIGRA) %>%
+  melt(., id = c("UPM", "ESTRATO", "FACTOR", "RESHAB", "RESREC", "MIG", "NOMIGRA")) %>%
+  srvyr::as_survey_design(ids = UPM, strata = ESTRATO, weights = FACTOR, nest = TRUE)
+
+
+p <- MC %>%
+  group_by(value) %>%
+  dplyr::summarise(RESHAB = survey_total(ifelse(variable == "CVE_ENT", RESHAB, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                   RESREC = survey_total(ifelse(variable == "CVE_ENT", RESREC, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                   INMIG = survey_total(ifelse(variable == "CVE_ENT", MIG, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE), 
+                   EMIG = survey_total(ifelse(variable == "CVE_ENT5" & value %in% estados, MIG, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE)) %>%
+  ungroup()  %>%
+  mutate(MIGNETA = INMIG - EMIG, 
+         MIGBRUTA = INMIG + EMIG,
+         TASAINMI = ((INMIG/ 5) /((RESHAB + RESREC) / 2))*1000,
+         TASAEMI = ((EMIG/ 5) /((RESHAB + RESREC) / 2))*1000, 
+         TASAMIG = TASAINMI - TASAEMI,
+         EFICACIA = MIGNETA - MIGBRUTA) 
+```
+
+
+# Nivel municipal {.tabset .tabset-pills}
+
+## Población Total {.tabset .tabset-pills}
+
+## Población 5 años y más {.tabset .tabset-pills}
+
+## Migración reciente {.tabset .tabset-pills}
+
+### Muestreo Complejo (Opción 1)
+
+
+```{r, eval = FALSE}
+require(srvyr)
+options(survey.lonely.psu="adjust")
+
+MC <- muestra_2020 %>%
+       as.data.frame() %>%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %>%
+         mutate(EDAD = as.numeric(.$EDAD)) %>%
+      mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
+                                         .$ENT_PAIS_RES_5A %nin% estados ~ "888", #Residencia en otro país
+                                         .$ENT_PAIS_RES_5A %in% "997" ~ "997",
+                                         .$ENT_PAIS_RES_5A %in% "998" ~ "998",
+                                         .$ENT_PAIS_RES_5A %in% "997" ~ "999")) %>% 
+      mutate(I_RES_5A = case_when((.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% estados ~ .$ENT_PAIS_RES_5A,
+                                  (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "888" ~ "888",
+                                  (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "997" ~ "997",
+                                  (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "998" ~ "998",
+                                  (.$EDAD >= 5 & .$EDAD <= 130) & ENT_PAIS_RES_5A %in% "999" ~ "999")) %>%
+      mutate(M = 1) 
 
 svy_design <- MC  %>%
   svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, #weights = ~FACTOR, 
@@ -513,14 +713,6 @@ p <- MC %>%
          EFICACIA = MIGNETA - MIGBRUTA) 
 ```
 
-
-# Nivel municipal {.tabset .tabset-pills}
-
-## Población Total {.tabset .tabset-pills}
-
-## Población 5 años y más {.tabset .tabset-pills}
-
-## Migración reciente {.tabset .tabset-pills}
 
 
 Se utiliza la paquetería `survey` para poder trabajar con la muestra del cuestionario ampliado, en la cual se selecciona a la población de 5 años y más.

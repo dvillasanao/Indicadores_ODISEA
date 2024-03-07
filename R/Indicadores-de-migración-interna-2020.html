@@ -585,41 +585,42 @@ OUTPUTFILE XLS &quot;Output\Residencia_Habitual a nivel estatal_2020.xlsx&quot; 
 <pre class="r fold-show"><code>options(survey.lonely.psu = &quot;adjust&quot;)
 
 MC &lt;- muestra_2020 %&gt;%
-  as.data.frame() %&gt;%
-  select(FACTOR, ESTRATO, UPM, CVE_ENT) %&gt;%
-  mutate(probs = 1/.$FACTOR) %&gt;%
-  mutate(Pob.Total = 1) 
+       as.data.frame() %&gt;%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT) %&gt;%
+         mutate(probs = 1/.$FACTOR) %&gt;%
+          mutate(Pob.Total = 1,
+                 M = 1) 
 
 svy_design &lt;- MC  %&gt;%
-  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
-            #weights = ~FACTOR, 
-            nest = TRUE,
-            probs = ~probs)
+               svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
+                          #weights = ~FACTOR, 
+                           nest = TRUE,
+                            probs = ~probs)
 
 ## Población de total
 Total_est &lt;- svyby(~Pob.Total,
-                   by = ~M,
-                   svy_design,
-                   svytotal,
-                   vartype = c(&quot;se&quot;,&quot;cv&quot;),
-                   drop.empty.groups = TRUE) %&gt;%
-  cbind(confint(object = ., level = 0.90))
+                    by = ~M,
+                     svy_design,
+                      svytotal,
+                       vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                        drop.empty.groups = TRUE) %&gt;%
+              cbind(confint(object = ., level = 0.90))
 
 Total_est %&gt;%
-  as.data.frame() %&gt;%
+ as.data.frame() %&gt;%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))
 
 ## Población total en el estado 
 est &lt;- svyby(~Pob.Total,
-             by = ~CVE_ENT,
-             svy_design,
-             svytotal,
-             vartype = c(&quot;se&quot;,&quot;cv&quot;),
-             drop.empty.groups = TRUE) %&gt;%
-  cbind(confint(object = ., level = 0.90))
+              by = ~CVE_ENT,
+               svy_design,
+                svytotal,
+                 vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                  drop.empty.groups = TRUE) %&gt;%
+        cbind(confint(object = ., level = 0.90))
 
 est %&gt;%
-  as.data.frame() %&gt;%
+ as.data.frame() %&gt;%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))
 
 # Se guardan los resultados
@@ -643,45 +644,45 @@ OUTPUTFILE XLS &quot;Output\Poblacion 5 años y mas a nivel estatal_2020.xlsx&qu
 <pre class="r fold-show"><code>options(survey.lonely.psu = &quot;adjust&quot;)
 
 MC &lt;- muestra_2020 %&gt;%
-  as.data.frame() %&gt;%
-  select(FACTOR, ESTRATO, UPM, CVE_ENT, EDAD) %&gt;%
-  mutate(probs = 1/.$FACTOR) %&gt;%
-  mutate(EDAD = as.numeric(.$EDAD), 
-         M = 1) %&gt;%
-  mutate(Pob.5ymas = case_when(.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130 ~ 1,
-                               TRUE ~  0)) 
+       as.data.frame() %&gt;%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, EDAD) %&gt;%
+         mutate(probs = 1/.$FACTOR) %&gt;%
+          mutate(EDAD = as.numeric(.$EDAD), 
+                 M = 1) %&gt;%
+           mutate(Pob.5ymas = case_when(.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130 ~ 1,
+                                   TRUE ~  0)) 
 
 svy_design &lt;- MC  %&gt;%
-  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
-            #weights = ~FACTOR, 
-            nest = TRUE,
-            probs = ~probs)
+               svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
+                         #weights = ~FACTOR, 
+                          nest = TRUE,
+                           probs = ~probs)
 
 ## Población de 5 años y más
 Total_est &lt;- svyby(~Pob.5ymas,
-                   by = ~M,
-                   svy_design,
-                   svytotal,
-                   vartype = c(&quot;se&quot;,&quot;cv&quot;),
-                   drop.empty.groups = TRUE) %&gt;%
-  cbind(confint(object = ., level = 0.90))
+                    by = ~M,
+                     svy_design,
+                      svytotal,
+                       vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                        drop.empty.groups = TRUE) %&gt;%
+              cbind(confint(object = ., level = 0.90))
 
 Total_est %&gt;% 
-  as.data.frame() %&gt;%
+ as.data.frame() %&gt;%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))
 
 
 ## Población de 5 años y más en el estado 
 est &lt;- svyby(~Pob.5ymas,
-             by = ~CVE_ENT,
-             svy_design,
-             svytotal,
-             vartype = c(&quot;se&quot;,&quot;cv&quot;),
-             drop.empty.groups = TRUE) %&gt;%
-  cbind(confint(object = ., level = 0.90))
+              by = ~CVE_ENT,
+               svy_design,
+                svytotal,
+                 vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                  drop.empty.groups = TRUE) %&gt;%
+        cbind(confint(object = ., level = 0.90))
 
 est %&gt;%
-  as.data.frame() %&gt;%
+ as.data.frame() %&gt;%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))
 
 # Se guardan los resultados
@@ -690,7 +691,6 @@ addWorksheet(wb, &quot;Pob.5ymas (Total)&quot;)
 addWorksheet(wb, &quot;Pob.5ymas (Estados)&quot;)
 writeData(wb, 1, est, colNames = TRUE, rowNames = TRUE)
 writeData(wb, 1, est, colNames = TRUE, rowNames = TRUE)
-
 saveWorkbook(wb, 
              file = paste0(here::here(), &quot;/Output/Pob.5ymas (Estados).xlsx&quot;), 
              overwrite = TRUE)</code></pre>
@@ -704,24 +704,22 @@ población de 5 años y más.</p>
 <h3>Muestreo Complejo (Opción 1)</h3>
 <pre class="r fold-show"><code>require(srvyr)
 options(survey.lonely.psu=&quot;adjust&quot;)
-options(survey.lonely.psu=&quot;certainty&quot;)
-options(&quot;survey.ultimate.cluster&quot; = FALSE)
 
 MC &lt;- muestra_2020 %&gt;%
-  as.data.frame() %&gt;%
-  select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %&gt;%
-  mutate(EDAD = as.numeric(.$EDAD)) %&gt;%
-  mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
-                                     .$ENT_PAIS_RES_5A %nin% estados ~ &quot;888&quot;, #Residencia en otro país
-                                     .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
-                                     .$ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
-                                     .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;999&quot;)) %&gt;% 
-  mutate(I_RES_5A = case_when((.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% estados ~ .$ENT_PAIS_RES_5A,
-                              (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;888&quot; ~ &quot;888&quot;,
-                              (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
-                              (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
-                              (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;999&quot; ~ &quot;999&quot;)) %&gt;%
-  mutate(M = 1) 
+       as.data.frame() %&gt;%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %&gt;%
+         mutate(EDAD = as.numeric(.$EDAD)) %&gt;%
+      mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
+                                         .$ENT_PAIS_RES_5A %nin% estados ~ &quot;888&quot;, #Residencia en otro país
+                                         .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
+                                         .$ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
+                                         .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;999&quot;)) %&gt;% 
+      mutate(I_RES_5A = case_when((.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% estados ~ .$ENT_PAIS_RES_5A,
+                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;888&quot; ~ &quot;888&quot;,
+                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
+                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
+                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;999&quot; ~ &quot;999&quot;)) %&gt;%
+      mutate(M = 1) 
 
 svy_design &lt;- MC  %&gt;%
   svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, #weights = ~FACTOR, 
@@ -823,10 +821,119 @@ p &lt;- MC %&gt;%
 </div>
 <div id="migración-reciente" class="section level2 tabset tabset-pills">
 <h2 class="tabset tabset-pills">Migración reciente</h2>
+<div id="muestreo-complejo-opción-1-1" class="section level3">
+<h3>Muestreo Complejo (Opción 1)</h3>
+<pre class="r fold-show"><code>require(srvyr)
+options(survey.lonely.psu=&quot;adjust&quot;)
+
+MC &lt;- muestra_2020 %&gt;%
+       as.data.frame() %&gt;%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %&gt;%
+         mutate(EDAD = as.numeric(.$EDAD)) %&gt;%
+      mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
+                                         .$ENT_PAIS_RES_5A %nin% estados ~ &quot;888&quot;, #Residencia en otro país
+                                         .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
+                                         .$ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
+                                         .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;999&quot;)) %&gt;% 
+      mutate(I_RES_5A = case_when((.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% estados ~ .$ENT_PAIS_RES_5A,
+                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;888&quot; ~ &quot;888&quot;,
+                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
+                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
+                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;999&quot; ~ &quot;999&quot;)) %&gt;%
+      mutate(M = 1) 
+
+svy_design &lt;- MC  %&gt;%
+  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, #weights = ~FACTOR, 
+            nest = TRUE, probs = probs)
+#clusterExport(cl, c(&quot;MC&quot;))
+#svy_design &lt;- parLapply(cl, 1:length(cl), function(i) {
+# svydesign(data = MC[i:nrow(MC), ], ids = ~UPM, strata = ~ESTRATO, weights = ~FACTOR, nest = TRUE)
+#})
+probs &lt;- svy_design$prob
+svy_design &lt;- MC  %&gt;%
+  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, #weights = ~FACTOR, 
+            nest = TRUE, probs = probs)
+
+#p &lt;- as.svrepdesign(svy_design, type=&quot;bootstrap&quot;, replicates=100)
+
+#options(&quot;survey.ultimate.cluster&quot; = FALSE)
+#p &lt;- as.svrepdesign(svy_design)
+
+require(survey)
+tabla &lt;- svytotal(~M + CVE_ENT, svy_design)
+
+library(fastsurvey)
+fastsurvey::svytotal(~M,
+                     multistage_design)
+
+p &lt;- MC  %&gt;%
+  svrepdesign(data = mydata, ids = ~UPM, strata = ~ESTRATO, weights = ~FACTOR, nest = TRUE) 
+POB_TOT_est &lt;- svytotal(~M,
+                        MC)
+## Población total en el estado 
+POB_TOT_est &lt;- svyby(~M,
+                     by = ~CVE_ENT,
+                     svy_design,
+                     svytotal,
+                     vartype = c(&quot;se&quot;,&quot;cv&quot;, &quot;ci&quot;),
+                     level = 0.90
+                     #drop.empty.groups = TRUE 
+                     #na.rm.by = TRUE, 
+                     #multicore=getOption(&quot;survey.multicore&quot;)
+) #desvest / %CV / Coef. de variación
+
+confint(POB_TOT_est, level = 0.90, df =Inf)</code></pre>
+<div id="muestreo-complejo-opción-2-1" class="section level4">
+<h4>Muestreo Complejo (Opción 2)</h4>
+<pre class="r fold-show"><code>MC &lt;- muestra_2020 %&gt;%
+  as.data.frame() %&gt;%
+  select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %&gt;%
+  mutate(EDAD = as.numeric(.$EDAD)) %&gt;%
+  mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
+                                     .$ENT_PAIS_RES_5A %nin% estados ~ &quot;888&quot;, #Residencia en otro país
+                                     .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
+                                     .$ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
+                                     .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;999&quot;)) %&gt;% 
+  mutate(I_RES_5A = case_when((.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% estados ~ .$ENT_PAIS_RES_5A,
+                              (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;888&quot; ~ &quot;888&quot;,
+                              (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
+                              (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
+                              (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;999&quot; ~ &quot;999&quot;)) %&gt;%
+  mutate(CVE_ENTS = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A)) %&gt;%
+  mutate(M = 1) %&gt;%
+  mutate(RESHAB = 1,
+         RESREC = case_when(EDAD &gt;= 5 &amp; EDAD &lt;= 130 ~ 1,
+                            TRUE ~ NA),
+         MIG = case_when(.$CVE_ENT !=.$ENT_PAIS_RES_5A  &amp; (EDAD &gt;= 5 &amp; EDAD &lt;= 130) ~ 1,
+                         TRUE ~ NA),
+         NOMIGRA = case_when(.$CVE_ENT ==.$ENT_PAIS_RES_5A &amp; (EDAD &gt;= 5 &amp; EDAD &lt;= 130) ~ 1,
+                             TRUE ~ NA)) 
+MC &lt;- MC %&gt;%
+  as.data.frame() %&gt;%
+  select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, RESHAB, RESREC,  MIG, NOMIGRA) %&gt;%
+  melt(., id = c(&quot;UPM&quot;, &quot;ESTRATO&quot;, &quot;FACTOR&quot;, &quot;RESHAB&quot;, &quot;RESREC&quot;, &quot;MIG&quot;, &quot;NOMIGRA&quot;)) %&gt;%
+  srvyr::as_survey_design(ids = UPM, strata = ESTRATO, weights = FACTOR, nest = TRUE)
+
+
+p &lt;- MC %&gt;%
+  group_by(value) %&gt;%
+  dplyr::summarise(RESHAB = survey_total(ifelse(variable == &quot;CVE_ENT&quot;, RESHAB, 0), vartype = c(&quot;se&quot;, &quot;cv&quot;, &quot;ci&quot;), level = 0.90, na.rm = TRUE),
+                   RESREC = survey_total(ifelse(variable == &quot;CVE_ENT&quot;, RESREC, 0), vartype = c(&quot;se&quot;, &quot;cv&quot;, &quot;ci&quot;), level = 0.90, na.rm = TRUE),
+                   INMIG = survey_total(ifelse(variable == &quot;CVE_ENT&quot;, MIG, 0), vartype = c(&quot;se&quot;, &quot;cv&quot;, &quot;ci&quot;), level = 0.90, na.rm = TRUE), 
+                   EMIG = survey_total(ifelse(variable == &quot;CVE_ENT5&quot; &amp; value %in% estados, MIG, 0), vartype = c(&quot;se&quot;, &quot;cv&quot;, &quot;ci&quot;), level = 0.90, na.rm = TRUE)) %&gt;%
+  ungroup()  %&gt;%
+  mutate(MIGNETA = INMIG - EMIG, 
+         MIGBRUTA = INMIG + EMIG,
+         TASAINMI = ((INMIG/ 5) /((RESHAB + RESREC) / 2))*1000,
+         TASAEMI = ((EMIG/ 5) /((RESHAB + RESREC) / 2))*1000, 
+         TASAMIG = TASAINMI - TASAEMI,
+         EFICACIA = MIGNETA - MIGBRUTA) </code></pre>
 <p>Se utiliza la paquetería <code>survey</code> para poder trabajar con
 la muestra del cuestionario ampliado, en la cual se selecciona a la
 población de 5 años y más.</p>
-<div id="muestreo-complejo-opción-1-1" class="section level3">
+</div>
+</div>
+<div id="muestreo-complejo-opción-1-2" class="section level3">
 <h3>Muestreo Complejo (Opción 1)</h3>
 <pre><code>```{r}
 TABLE DR_RESHAB
