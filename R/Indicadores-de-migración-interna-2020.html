@@ -530,11 +530,11 @@ Se carga el archivo <code>Migracion interna_2020.RData</code>.</p>
 <pre class="r fold-show"><code>load(file = paste0(here::here(), &quot;/Bases/01_Migracion interna_2020.RData&quot;))
 
 # Para fines prácticos se genera un ponderador de uno 
-muestra_2020 &lt;- mydata %&gt;%
-  select(CVE_ENT, ENT, MUN, CVE_MUN, LOC50K, COBERTURA, ENT_PAIS_NAC, ENT_PAIS_RES_5A, MUN_RES_5A, CVE_MUN_RES15, EDAD, COBERTURA, FACTOR, ESTRATO, UPM) %&gt;%
-  mutate(M = 1)  %&gt;%
-  mutate(NOM_ENT = as.factor(.$CVE_ENT)) %&gt;%
-  ungroup()</code></pre>
+mydata &lt;- mydata %&gt;%
+           select(CVE_ENT, ENT, MUN, CVE_MUN, LOC50K, COBERTURA, ENT_PAIS_NAC, ENT_PAIS_RES_5A, MUN_RES_5A, CVE_MUN_RES15, EDAD, COBERTURA, FACTOR, ESTRATO, UPM) %&gt;%
+           mutate(M = 1)  %&gt;%
+            mutate(NOM_ENT = as.factor(.$CVE_ENT)) %&gt;%
+             ungroup()</code></pre>
 <p><strong>Claves de entidades y municipios</strong></p>
 <p>Se genera un vector con el nombre de las entidades llamado
 <code>estados</code> para facilitar los filtros en el documento.  Se
@@ -544,7 +544,7 @@ Se genera un vector con las claves de los municipios, pero es importante
 hacer notar que tres municipios no entraron el muestreo del Cuestionario
 Ampliado.</p>
 <pre class="r fold-show"><code># Claves de los estados
-estados &lt;- sjlabelled::get_labels(muestra_2020$CVE_ENT)
+estados &lt;- sjlabelled::get_labels(mydata$CVE_ENT)
 nom_estados &lt;- c( &quot;Aguascalientes&quot;, &quot;Baja California&quot; ,&quot;Baja California Sur&quot;, &quot;Campeche&quot;, &quot;Coahuila de Zaragoza&quot;,
                   &quot;Colima&quot;, &quot;Chiapas&quot;, &quot;Chihuahua&quot;, &quot;Ciudad de México&quot;, &quot;Durango&quot;, 
                   &quot;Guanajuato&quot;, &quot;Guerrero&quot;, &quot;Hidalgo&quot;, &quot;Jalisco&quot;,  &quot;México&quot;, 
@@ -584,7 +584,7 @@ OUTPUTFILE XLS &quot;Output\Residencia_Habitual a nivel estatal_2020.xlsx&quot; 
 ```</code></pre>
 <pre class="r fold-show"><code>options(survey.lonely.psu = &quot;adjust&quot;)
 
-MC &lt;- muestra_2020 %&gt;%
+MC &lt;- mydata %&gt;%
        as.data.frame() %&gt;%
         select(FACTOR, ESTRATO, UPM, CVE_ENT) %&gt;%
          mutate(probs = 1/.$FACTOR) %&gt;%
@@ -643,7 +643,7 @@ OUTPUTFILE XLS &quot;Output\Poblacion 5 años y mas a nivel estatal_2020.xlsx&qu
 ```</code></pre>
 <pre class="r fold-show"><code>options(survey.lonely.psu = &quot;adjust&quot;)
 
-MC &lt;- muestra_2020 %&gt;%
+MC &lt;- mydata %&gt;%
        as.data.frame() %&gt;%
         select(FACTOR, ESTRATO, UPM, CVE_ENT, EDAD) %&gt;%
          mutate(probs = 1/.$FACTOR) %&gt;%
@@ -689,81 +689,155 @@ est %&gt;%
 wb &lt;- createWorkbook()
 addWorksheet(wb, &quot;Pob.5ymas (Total)&quot;)
 addWorksheet(wb, &quot;Pob.5ymas (Estados)&quot;)
-writeData(wb, 1, est, colNames = TRUE, rowNames = TRUE)
-writeData(wb, 1, est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 1, Total_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, est, colNames = TRUE, rowNames = TRUE)
 saveWorkbook(wb, 
              file = paste0(here::here(), &quot;/Output/Pob.5ymas (Estados).xlsx&quot;), 
              overwrite = TRUE)</code></pre>
 </div>
 <div id="migración-nacimiento" class="section level2 tabset tabset-pills">
 <h2 class="tabset tabset-pills">Migración nacimiento</h2>
-<p>Se utiliza la paquetería <code>survey</code> para poder trabajar con
-la muestra del cuestionario ampliado, en la cual se selecciona a la
-población de 5 años y más.</p>
+<p>Para poder clasificiar a la matriz de nacimiento, es importante
+clasificar a los:</p>
+<ul>
+<li>Residentes (Diagonal de la matriz).<br />
+</li>
+<li>Inmigrantes (Entran al lugar de residencia habitual 2020).<br />
+</li>
+<li>Emigrantes (Salen del lugar de residencia habitual 2020).</li>
+</ul>
+<p>En esta clasificiación es tener controlados a los que nacieron en
+otro país o los no especificados.</p>
+<p>Estructura de la población total. Utilizando REDATAM.</p>
+<pre><code>```{r}
+/*DAMNAC  (División Administrativa Mayor de Nacimiento)  */
+DEFINE PERSONA.DAMNAC
+    AS SWITCH
+     INCASE PERSONA.ENT_PAIS_NAC &gt; 32
+     ASSIGN 0
+     INCASE PERSONA.ENT_PAIS_NAC &lt;= 32 
+     ASSIGN PERSONA.ENT_PAIS_NAC
+  NOTAPPLICABLE 0
+  MISSING 1
+  DEFAULT 0
+    TYPE INTEGER
+    RANGE (1:32)
+  VARLABEL &quot;Entidad de nacimiento&quot;
+    LIKE PERSONA.ENT_PAIS_NAC
+SAVE &quot;variables\DAMNAC.rbf&quot;
+OVERWRITE
+GROUP MIGRACION
+```</code></pre>
+<pre><code>```{r}
+//Nivel DAM-indicadores migración toda la vida
+TABLE MB_NAC_DAM
+FREQ DAMRES BY DAMNAC
+FILTER DAMRES &gt; 0 AND DAMNAC &gt; 0
+ZERO
+TITLE &quot;MATRIZ MIGRACIÓN TODA LA VIDA&quot;
+OUTPUTFILE JSON &quot;MIGINT\MINT-MB-NAC-DAM.JSON&quot; OVERWRITE
+```</code></pre>
+<p><strong>Clasificación de las variables para el muestreo
+complejo</strong></p>
+<pre class="r fold-show"><code>options(survey.lonely.psu = &quot;adjust&quot;)
+
+# Se almacena a la población total del lugar de residencia habitual a nivel estatal
+POB_TOT &lt;- mydata%&gt;%
+            group_by(CVE_ENT) %&gt;%
+             mutate(Pob.Total = sum(M * FACTOR)) %&gt;%
+              ungroup() %&gt;%
+               distinct(., CVE_ENT, Pob.Total) 
+
+MC &lt;- mydata %&gt;%
+       as.data.frame() %&gt;%
+        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_NAC, EDAD) %&gt;%
+         mutate(probs = 1/.$FACTOR) %&gt;%
+          mutate(EDAD = as.numeric(.$EDAD),
+                 M = 1) %&gt;%
+           mutate(ENT_PAIS_NAC = case_when(.$ENT_PAIS_NAC %in% estados ~.$ENT_PAIS_NAC,
+                                           .$ENT_PAIS_NAC %in% &quot;997&quot; ~ &quot;997&quot;,
+                                           .$ENT_PAIS_NAC %in% &quot;998&quot; ~ &quot;998&quot;,
+                                           .$ENT_PAIS_NAC %in% &quot;999&quot; ~ &quot;999&quot;,
+                                           .$ENT_PAIS_NAC %nin% estados ~ &quot;888&quot;, #Residencia en otro país
+                                           )) %&gt;% 
+            mutate(I_Nacimiento = case_when(.$CVE_ENT == .$ENT_PAIS_NAC ~ &quot;1&quot;,
+                                           .$CVE_ENT != .$ENT_PAIS_NAC &amp; (.$ENT_PAIS_NAC %nin% c(&quot;888&quot;, &quot;997&quot;, &quot;998&quot;, &quot;999&quot;)) ~ &quot;2&quot;,
+                                           .$ENT_PAIS_NAC == &quot;888&quot; ~ &quot;888&quot;,
+                                           .$ENT_PAIS_NAC == &quot;997&quot; ~ &quot;997&quot;,
+                                           .$ENT_PAIS_NAC == &quot;998&quot; ~ &quot;998&quot;,
+                                           .$ENT_PAIS_NAC == &quot;999&quot; ~ &quot;999&quot;)) %&gt;%
+             # Se clasifica a la población residente de la migrante
+             mutate(Residentes = case_when(I_Nacimiento %in% &quot;1&quot; ~ 1,
+                                           TRUE ~ 0),
+                    Migrantes = case_when(I_Nacimiento %in% &quot;2&quot; ~ 1,
+                                           TRUE ~ 0))  %&gt;% 
+             # Se agrupa a la población total de acuerdo al lugar de residencia habitual y de nacimiento, para el calculo
+             # de las tasas de emigación
+              left_join(., POB_TOT %&gt;% 
+                            rename(&quot;Pob.Total_Estados&quot; = &quot;Pob.Total&quot;), by = c(&quot;ENT_PAIS_NAC&quot; = &quot;CVE_ENT&quot;)) %&gt;%
+               group_by(ENT_PAIS_NAC) %&gt;%
+                mutate(Pob.Total.Nacimiento = sum(M * FACTOR)) %&gt;%
+                 ungroup() %&gt;%
+                  mutate(PPob = Pob.Total_Estados / Pob.Total.Nacimiento)</code></pre>
 <div id="muestreo-complejo-opción-1" class="section level3">
 <h3>Muestreo Complejo (Opción 1)</h3>
-<pre class="r fold-show"><code>require(srvyr)
-options(survey.lonely.psu=&quot;adjust&quot;)
+<pre class="r fold-show"><code>   svy_design &lt;- MC  %&gt;%
+               svydesign(data = ., 
+                          ids = ~UPM, 
+                           strata = ~ESTRATO, 
+                            probs = ~probs,
+                             nest = TRUE)</code></pre>
+<p><strong>Población total</strong></p>
+<pre class="r fold-show"><code>## Población Total (Indicadora de nacimiento)
+Total_Residentes_est &lt;- svyby(~Residentes,
+                               by = ~M,
+                                svy_design,
+                                 svytotal,
+                                  vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                                   drop.empty.groups = TRUE) %&gt;%
+                          cbind(confint(object = ., level = 0.90))
+Total_Residentes_est %&gt;% 
+ as.data.frame() %&gt;%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))
 
-MC &lt;- muestra_2020 %&gt;%
-       as.data.frame() %&gt;%
-        select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %&gt;%
-         mutate(EDAD = as.numeric(.$EDAD)) %&gt;%
-      mutate(ENT_PAIS_RES_5A = case_when(.$ENT_PAIS_RES_5A %in% estados ~.$ENT_PAIS_RES_5A,
-                                         .$ENT_PAIS_RES_5A %nin% estados ~ &quot;888&quot;, #Residencia en otro país
-                                         .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
-                                         .$ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
-                                         .$ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;999&quot;)) %&gt;% 
-      mutate(I_RES_5A = case_when((.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% estados ~ .$ENT_PAIS_RES_5A,
-                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;888&quot; ~ &quot;888&quot;,
-                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;997&quot; ~ &quot;997&quot;,
-                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;998&quot; ~ &quot;998&quot;,
-                                  (.$EDAD &gt;= 5 &amp; .$EDAD &lt;= 130) &amp; ENT_PAIS_RES_5A %in% &quot;999&quot; ~ &quot;999&quot;)) %&gt;%
-      mutate(M = 1) 
+Total_Inmigrantes_est &lt;- svyby(~Residentes,
+                                by = ~M,
+                                 svy_design,
+                                  svytotal,
+                                   vartype = c(&quot;se&quot;,&quot;cv&quot;),
+                                    drop.empty.groups = TRUE) %&gt;%
+                           cbind(confint(object = ., level = 0.90))
 
-svy_design &lt;- MC  %&gt;%
-  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, #weights = ~FACTOR, 
-            nest = TRUE, probs = probs)
-#clusterExport(cl, c(&quot;MC&quot;))
-#svy_design &lt;- parLapply(cl, 1:length(cl), function(i) {
-# svydesign(data = MC[i:nrow(MC), ], ids = ~UPM, strata = ~ESTRATO, weights = ~FACTOR, nest = TRUE)
-#})
-probs &lt;- svy_design$prob
-svy_design &lt;- MC  %&gt;%
-  svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, #weights = ~FACTOR, 
-            nest = TRUE, probs = probs)
+Total_Inmigrantes_est %&gt;% 
+ as.data.frame() %&gt;%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))</code></pre>
+<p><strong>Residentes por estado</strong></p>
+<pre class="r fold-show"><code>## Población Total (Lugar de Nacimiento) en el estado
+est &lt;- svyby(~I_Nacimiento,
+              by = ~CVE_ENT,
+               svy_design,
+                svytotal,
+                 vartype = c(&quot;se&quot;,&quot;cv&quot;, &quot;ci&quot;, &quot;ci&quot;),
+                  quantiles = 0.1, ci=TRUE,
+                  drop.empty.groups = TRUE)
+         cbind(confint(object = est, level = 0.90))
 
-#p &lt;- as.svrepdesign(svy_design, type=&quot;bootstrap&quot;, replicates=100)
+est %&gt;%
+ as.data.frame() %&gt;%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = &quot; &quot;, preserve.width = &quot;none&quot;)))
 
-#options(&quot;survey.ultimate.cluster&quot; = FALSE)
-#p &lt;- as.svrepdesign(svy_design)
-
-require(survey)
-tabla &lt;- svytotal(~M + CVE_ENT, svy_design)
-
-library(fastsurvey)
-fastsurvey::svytotal(~M,
-                     multistage_design)
-
-p &lt;- MC  %&gt;%
-  svrepdesign(data = mydata, ids = ~UPM, strata = ~ESTRATO, weights = ~FACTOR, nest = TRUE) 
-POB_TOT_est &lt;- svytotal(~M,
-                        MC)
-## Población total en el estado 
-POB_TOT_est &lt;- svyby(~M,
-                     by = ~CVE_ENT,
-                     svy_design,
-                     svytotal,
-                     vartype = c(&quot;se&quot;,&quot;cv&quot;, &quot;ci&quot;),
-                     level = 0.90
-                     #drop.empty.groups = TRUE 
-                     #na.rm.by = TRUE, 
-                     #multicore=getOption(&quot;survey.multicore&quot;)
-) #desvest / %CV / Coef. de variación
-
-confint(POB_TOT_est, level = 0.90, df =Inf)</code></pre>
-<div id="muestreo-complejo-opción-2" class="section level4">
-<h4>Muestreo Complejo (Opción 2)</h4>
+# Se guardan los resultados
+wb &lt;- createWorkbook()
+addWorksheet(wb, &quot;Lugar de nacimiento  (Total)&quot;)
+addWorksheet(wb, &quot;Lugar de nacimiento (Estados)&quot;)
+writeData(wb, 1, Total_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, est, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), &quot;/Output/Lugar de nacimiento (Estados).xlsx&quot;), 
+             overwrite = TRUE)</code></pre>
+</div>
+<div id="muestreo-complejo-opción-2" class="section level3">
+<h3>Muestreo Complejo (Opción 2)</h3>
 <pre class="r fold-show"><code>MC &lt;- muestra_2020 %&gt;%
   as.data.frame() %&gt;%
   select(FACTOR, ESTRATO, UPM, CVE_ENT, ENT_PAIS_RES_5A, EDAD) %&gt;%
@@ -807,7 +881,6 @@ p &lt;- MC %&gt;%
          TASAEMI = ((EMIG/ 5) /((RESHAB + RESREC) / 2))*1000, 
          TASAMIG = TASAINMI - TASAEMI,
          EFICACIA = MIGNETA - MIGBRUTA) </code></pre>
-</div>
 </div>
 </div>
 </div>

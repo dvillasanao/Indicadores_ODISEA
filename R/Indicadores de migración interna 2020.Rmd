@@ -395,7 +395,8 @@ saveWorkbook(wb,
 
 ## Migración nacimiento {.tabset .tabset-pills}
 
-Para poder clasificiar a la matriz de nacimiento, es importante clasificar a los:
+Para poder clasificiar a la matriz de nacimiento, es importante clasificar a los:    
+
 - Residentes  (Diagonal de la matriz).     
 - Inmigrantes (Entran al lugar de residencia habitual 2020).   
 - Emigrantes (Salen del lugar de residencia habitual 2020).  
@@ -438,10 +439,9 @@ OUTPUTFILE JSON "MIGINT\MINT-MB-NAC-DAM.JSON" OVERWRITE
 ```
 ````
 
-### Muestreo Complejo (Opción 1)
+**Clasificación de las variables para el muestreo complejo**
 
-
-```{r, eval = FALSE}
+```{r}
 options(survey.lonely.psu = "adjust")
 
 # Se almacena a la población total del lugar de residencia habitual a nivel estatal
@@ -483,27 +483,37 @@ MC <- mydata %>%
                  ungroup() %>%
                   mutate(PPob = Pob.Total_Estados / Pob.Total.Nacimiento)
    
-                
+             
+```
+
+### Muestreo Complejo (Opción 1)
+
+
+```{r, eval = FALSE}
 svy_design <- MC  %>%
                svydesign(data = ., 
                           ids = ~UPM, 
                            strata = ~ESTRATO, 
                             probs = ~probs,
                              nest = TRUE)
+```
 
+**Población total**
+
+```{r}
 ## Población Total (Indicadora de nacimiento)
-Total_Residentes_est <- svyby(~Residentes,
+Total_Residentes <- svyby(~Residentes,
                                by = ~M,
                                 svy_design,
                                  svytotal,
                                   vartype = c("se","cv"),
                                    drop.empty.groups = TRUE) %>%
                           cbind(confint(object = ., level = 0.90))
-Total_Residentes_est %>% 
+Total_Residentes %>% 
  as.data.frame() %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 
-Total_Inmigrantes_est <- svyby(~Residentes,
+Total_Inmigrantes <- svyby(~Migrantes,
                                 by = ~M,
                                  svy_design,
                                   svytotal,
@@ -511,37 +521,139 @@ Total_Inmigrantes_est <- svyby(~Residentes,
                                     drop.empty.groups = TRUE) %>%
                            cbind(confint(object = ., level = 0.90))
 
-Total_Inmigrantes_est %>% 
+Total_Inmigrantes %>% 
  as.data.frame() %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
 
-## Población de 5 años y más en el estado 
-est <- svyby(~I_Nacimiento,
-              by = ~CVE_ENT,
-               svy_design,
-                svytotal,
-                 vartype = c("se","cv", "ci", "ci"),
-                  quantiles = 0.1, ci=TRUE,
-                  drop.empty.groups = TRUE)
-         cbind(confint(object = est, level = 0.90))
+**Tasa de Inmigración**   
 
-est %>%
+```{r}
+## Población Total (Lugar de Nacimiento) en el estado
+TI_Total <- svyby(~Migrantes,
+                   denominator = ~M,
+                    by = ~M,
+                    svy_design,
+                     svyratio,
+                      vartype = c("se","cv"),
+                       drop.empty.groups = TRUE) %>%
+             cbind(confint(object = ., level = 0.90))
+TI_Total %>%
  as.data.frame() %>%
   mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
 
+**Residentes por estado** 
+
+```{r}
+## Población Total (Lugar de Nacimiento) en el estado
+residentes <- svyby(~Residentes,
+                     by = ~CVE_ENT,
+                      svy_design,
+                       svytotal,
+                        vartype = c("se","cv"),
+                         drop.empty.groups = TRUE) %>%
+               cbind(confint(object = ., level = 0.90))
+
+residentes %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
+
+**Inmigrantes por estado** 
+
+```{r}
+## Población Total (Lugar de Nacimiento) en el estado
+inmigrantes <- svyby(~Migrantes,
+                       by = ~CVE_ENT,
+                        svy_design,
+                         svytotal,
+                          vartype = c("se","cv"),
+                           drop.empty.groups = TRUE) %>%
+                 cbind(confint(object = ., level = 0.90))
+
+inmigrantes %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
+
+**Emigrantes por estado** 
+
+```{r}
+## Población Total (Lugar de Nacimiento) en el estado
+emigrantes <- svyby(~Migrantes,
+                     by = ~ENT_PAIS_NAC,
+                      svy_design,
+                       svytotal,
+                        vartype = c("se","cv"),
+                         drop.empty.groups = TRUE) %>%
+               cbind(confint(object = ., level = 0.90))
+
+emigrantes %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
+
+**Tasa de Inmigración por estado**   
+
+```{r}
+## Población Total (Lugar de Nacimiento) en el estado
+TI_est <- svyby(~Migrantes,
+                 denominator = ~M,
+                  by = ~CVE_ENT,
+                   svy_design,
+                    svyratio,
+                     vartype = c("se","cv"),
+                      drop.empty.groups = TRUE) %>%
+                cbind(confint(object = ., level = 0.90))
+TI_est %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
+
+**Tasa de Emigración por estado**   
+
+```{r}
+## Población Total (Lugar de Nacimiento) en el estado
+TE_est <- svyby(~Migrantes,
+                 denominator = ~PPob,
+                  by = ~ENT_PAIS_NAC,
+                   svy_design,
+                    svyratio,
+                     vartype = c("se","cv"),
+                      drop.empty.groups = TRUE) %>%
+                cbind(confint(object = ., level = 0.90))
+TE_est %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
+```
+
+```{r}
 # Se guardan los resultados
 wb <- createWorkbook()
-addWorksheet(wb, "Lugar de nacimiento  (Total)")
-addWorksheet(wb, "Lugar de nacimiento (Estados)")
-writeData(wb, 1, Total_est, colNames = TRUE, rowNames = TRUE)
-writeData(wb, 2, est, colNames = TRUE, rowNames = TRUE)
+addWorksheet(wb, "Residentes (Total)")
+addWorksheet(wb, "Migrantes (Total)")
+addWorksheet(wb, "Residentes (Estados)")
+addWorksheet(wb, "Inmigrantes (Estados)")
+addWorksheet(wb, "Emigrantes (Estados)")
+addWorksheet(wb, "T.Inmigrantes (Total)")
+addWorksheet(wb, "T.Inmigrantes (Estados)")
+addWorksheet(wb, "T.Emigrantes (Estados)")
+writeData(wb, 1, Total_Residentes_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 2, Total_Inmigrantes_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 3, residentes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 4, inmigrantes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 5, emigrantes, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 6, TI_Total, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 7, TI_est, colNames = TRUE, rowNames = TRUE)
+writeData(wb, 8, TE_est, colNames = TRUE, rowNames = TRUE)
 saveWorkbook(wb, 
              file = paste0(here::here(), "/Output/Lugar de nacimiento (Estados).xlsx"), 
              overwrite = TRUE)
 ```
 
 
-#### Muestreo Complejo (Opción 2)
+### Muestreo Complejo (Opción 2)
 
 ```{r}
 MC <- muestra_2020 %>%
