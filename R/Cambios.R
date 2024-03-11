@@ -1,4 +1,4 @@
----
+de---
   title: "Indicadores de migración interna"
 subtitle: "Comparativo microdatos del censo y la muestra"
 author: "CONAPO"

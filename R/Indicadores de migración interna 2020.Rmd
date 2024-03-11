@@ -1217,6 +1217,19 @@ svy_design <- MC %>%
                  srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
 ```
 
+```{r}
+library(parallel)
+require(dplyr)
+# Configuración de clúster
+cl <- makeCluster(10)  # Ajusta el número de clústeres según tu máquina
+
+# Exportar 'svy_design' a los clústeres
+clusterExport(cl, c("svy_design"))
+
+# Lista de variables sobre las cuales realizar cálculos en paralelo
+variables_a_procesar <- c("Pob.Total", "Pob_5ymas", "Residentes", "Inmigrantes", "TInmigracion", "Emigrantes", "TEmigracion", "MN", "MB", "TNM", "TBM", "Eficacia")
+```
+
 **Indicadores de migración reciente hace 5 años (Total)** 
 
 ```{r, class.source = "fold-hide"}
