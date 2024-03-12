@@ -1188,7 +1188,9 @@ MC <- mydata %>%
                                             .$CVE_MUN_RES == "999" ~ "999",
                                             .$CVE_MUN_RES == "997999" ~ "997999")) %>%
              # Se clasifica a la población residente de la migrante
-             mutate(Pob.5ymas = case_when((.$EDAD >= 5 & .$EDAD <= 130) ~ 1,
+             mutate(M = case_when(.$CVE_MUN %in% municipios ~ 1,
+                                  TRUE ~ 0),
+                    Pob.5ymas = case_when((.$EDAD >= 5 & .$EDAD <= 130) ~ 1,
                                            TRUE ~ 0),
                     Residentes = case_when((.$EDAD >= 5 & .$EDAD <= 130) & I_Residencia %in% "1" ~ 1,
                                            TRUE ~ 0),
@@ -1199,7 +1201,7 @@ MC <- mydata %>%
               left_join(., Pob.5ymas %>% 
                             rename("Pob.5ymas_Municipios" = "Pob.5ymas"), by = c("CVE_MUN_RES" = "CVE_MUN")) %>%
                group_by(CVE_MUN_RES) %>%
-                mutate(Pob.Total.R5a = sum(Pob.5ymas * FACTOR)) %>%
+                mutate(Pob.Total.R5a = sum(Pob.5ymas * FACTOR, na.rm = TRUE)) %>%
                  ungroup() %>%
                   mutate(PPob = Pob.5ymas_Municipios / Pob.Total.R5a)
 ```
@@ -1210,6 +1212,7 @@ La paquetería `srvyr` se centra en calcular estadísticas resumidas a partir de
 
 ```{r}
 options(survey.lonely.psu = "adjust")
+options(survey.adjust.domain.lonely = TRUE)
 
 svy_design <- MC %>% 
                select(ESTRATO, UPM, probs, CVE_MUN, CVE_MUN_RES, M, Pob.5ymas, Residentes, Migrantes, PPob) %>%
@@ -1217,7 +1220,7 @@ svy_design <- MC %>%
                  srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE)
 ```
 
-```{r}
+```{r, echo = FALSE, eval = FALSE}
 library(parallel)
 require(dplyr)
 # Configuración de clúster
@@ -1234,16 +1237,16 @@ variables_a_procesar <- c("Pob.Total", "Pob_5ymas", "Residentes", "Inmigrantes",
 
 ```{r, class.source = "fold-hide"}
 Indicadores_Totales <- svy_design %>%
-                         dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          Pob_5ymas = survey_total(ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Pob.5ymas, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          Residentes = survey_total(ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          Inmigrantes = survey_total(ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Migrantes, 0),
-                                                                      denominator = ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Pob.5ymas, 0), 
+                         dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_MUN" & value %in% municipios, M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Pob_5ymas = survey_total(ifelse(variable %in% "CVE_MUN" & value %in% municipios, Pob.5ymas, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Residentes = survey_total(ifelse(variable %in% "CVE_MUN" & value %in% municipios, Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Inmigrantes = survey_total(ifelse(variable %in% "CVE_MUN" & value %in% municipios, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_MUN" & value %in% municipios, Migrantes, 0),
+                                                                      denominator = ifelse(variable %in% "CVE_MUN" & value %in% municipios, Pob.5ymas, 0), 
                                                                       vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          Emigrantes = survey_total(ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios & nchar(value) > 0, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          TEmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios & nchar(value) > 0, Migrantes, 0),
-                                                                     denominator = ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios & nchar(value) > 0, PPob, 0), 
+                                          Emigrantes = survey_total(ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          TEmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios, Migrantes, 0),
+                                                                     denominator = ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios, PPob, 0), 
                                                                      vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                           MN = Inmigrantes - Emigrantes,
                                           MB = Inmigrantes + Emigrantes,
@@ -1290,6 +1293,14 @@ Indicadores <- svy_design %>%
 # Se guardan los resultados
 wb <- createWorkbook()
 addWorksheet(wb, "Lugar de Residencia (Totales")
+writeData(wb, 1, Indicadores_Totales, colNames = TRUE, rowNames = TRUE)
+saveWorkbook(wb, 
+             file = paste0(here::here(), "/Output/Lugar de residencia (Municipios)_Indicadores_Totales.xlsx"), 
+             overwrite = TRUE)
+
+# Se guardan los resultados
+wb <- createWorkbook()
+addWorksheet(wb, "Lugar de Residencia (Totales")
 addWorksheet(wb, "Lugar de Residencia (Estados")
 writeData(wb, 1, Indicadores_Totales, colNames = TRUE, rowNames = TRUE)
 writeData(wb, 2, Indicadores, colNames = TRUE, rowNames = TRUE)
@@ -1298,46 +1309,52 @@ saveWorkbook(wb,
              overwrite = TRUE)
 ```
 
-Se utiliza la paquetería `survey` para poder trabajar con la muestra del cuestionario ampliado, en la cual se selecciona a la población de 5 años y más.
-
 
 # Gráficos  {.tabset .tabset-pills}
 
-## Población total
+## Nivel estatal {.tabset .tabset-pills}
 
+### Población total
 
 ```{r}
 Pob.Total <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion interna 2020.xlsx"), startRow = 1, skipEmptyCols = TRUE,
-                       sheet = "Población Total (Entidad)") 
+                        sheet = "Población Total (Entidad)") %>%
+              filter(NOM_ENT != "Total")
 ```
 
 
 ```{r}
 tabla <- Pob.Total %>%
-  arrange(Pob_Total_Muestra) %>%
-  droplevels() 
+          arrange(Pob_Total_Muestra) %>%
+           droplevels() 
 
 ent <- tabla %>% pull(CVE_ENT)
+nom_ent <- tabla %>% pull(NOM_ENT)
 
 p <- tabla %>%
-  ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
-  geom_line(aes(y = Pob_Total_Muestra, color = "LINE1")) +
-  geom_ribbon(aes(ymin = Pob_Total_Muestra_low, ymax = Pob_Total_Muestra_upp), alpha = 0.2) + 
-  geom_line(aes(y = Pob_Total_Censo, color = "LINE2")) + 
-  theme_minimal() + 
-  theme(plot.title = element_text(family = "Montserrat Medium", size = 20), 
-        axis.text = element_text(family = "Montserrat Medium", size = 10), 
-        axis.title = element_text(family = "Montserrat Medium", size = 12),
-        legend.text = element_text(family = "Montserrat Medium"),
-        legend.title = element_text(family = "Montserrat Medium")) + 
-  scale_colour_manual(labels = c("Muestra", "Censo"),
-                      values = c("LINE1" = "blue", "LINE2" = "red")) +
-  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
-  labs(title = "Población Total",
-       y = "Población de Total",
-       x = "Estados", 
-       color = "", 
-       fill = "")
+      ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
+       geom_line(aes(y = Pob_Total_Muestra, color = "LINE1")) +
+        geom_ribbon(aes(ymin = Pob_Total_Muestra_low, ymax = Pob_Total_Muestra_upp), alpha = 0.2) + 
+         geom_line(aes(y = Pob_Total_Censo, color = "LINE2")) + 
+          theme_minimal() + 
+           theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"), 
+                 plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                 plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
+                 axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                 axis.title = element_text(family = "Montserrat Medium", size = 12),
+                 axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                 legend.text = element_text(family = "Montserrat Medium"),
+                 legend.title = element_text(family = "Montserrat Medium")) + 
+              scale_colour_manual(labels = c("Muestra", "Censo"),
+                                 values = c("LINE1" = "blue", "LINE2" = "red")) +
+               scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
+                scale_x_discrete(limits = nom_estados) + 
+                 labs(title = "Población Total",
+                      subtitle = "Comparativo muestra / microdatos",
+                      y = "Población Total",
+                      x = "", 
+                      color = "", 
+                      fill = "")
 
 p
 path = paste0(here::here(), "/Graficos/Pob_Total a nivel estatal.pdf") 
@@ -1345,148 +1362,142 @@ ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_p
 ```
 
 
+### Lugar de nacimiento {.tabset .tabset-pills}
 
 ```{r}
-P.Nacimiento <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion interna 2020.xlsx"), startRow = 6, skipEmptyCols = TRUE,
-                          sheet = "Lugar de Nacimiento") 
-
-P.Nacimiento <- P.Nacimiento %>%
-  as.data.frame() %>%
-  filter(NOM_ENT %nin% "Total")
-names(P.Nacimiento)
+P.Nacimiento <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion interna 2020.xlsx"), startRow = 7, skipEmptyCols = TRUE,
+                          sheet = "Lugar de Nacimiento")  %>%
+                 filter(NOM_ENT %nin% "Total")
 ```
 
 
-## Residentes
+#### Residentes
 
 ```{r}
 tabla <- P.Nacimiento %>%
-  arrange(Residentes) %>%
-  droplevels() 
+          arrange(Residentes) %>%
+           droplevels() 
 
 ent <- tabla %>% pull(CVE_ENT)
+nom_ent <- tabla %>% pull(NOM_ENT)
 
 p <- tabla %>%
-  ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
-  geom_line(aes(y = Residentes, color = "LINE1")) +
-  geom_ribbon(aes(ymin = Residentes_low, ymax = Residentes_upp), alpha = 0.2) + 
-  geom_line(aes(y = Residentes_Censo, color = "LINE2")) + 
-  theme_minimal() + 
-  theme(plot.title = element_text(family = "Montserrat Medium", size = 20), 
-        plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
-        axis.text = element_text(family = "Montserrat Medium", size = 10), 
-        axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
-        axis.title = element_text(family = "Montserrat Medium", size = 12),
-        legend.text = element_text(family = "Montserrat Medium"),
-        legend.title = element_text(family = "Montserrat Medium")) + 
-  scale_colour_manual(labels = c("Muestra", "Censo"),
-                      values = c("LINE1" = "blue", "LINE2" = "red")) +
-  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
-  scale_x_discrete(limits = nom_estados) + 
-  labs(title = "Población Nacimiento",
-       subtitle = "Residentes en el estado",
-       y = "",
-       x = "", 
-       color = "", 
-       fill = "")
+      ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
+       geom_line(aes(y = Residentes, color = "LINE1")) +
+        geom_ribbon(aes(ymin = Residentes_low, ymax = Residentes_upp), alpha = 0.2) + 
+         geom_line(aes(y = Residentes_Censo, color = "LINE2")) + 
+          theme_minimal() + 
+           theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"), 
+                 plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                 plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
+                 axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                 axis.title = element_text(family = "Montserrat Medium", size = 12),
+                 axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                 legend.text = element_text(family = "Montserrat Medium"),
+                 legend.title = element_text(family = "Montserrat Medium")) + 
+              scale_colour_manual(labels = c("Muestra", "Censo"),
+                                 values = c("LINE1" = "blue", "LINE2" = "red")) +
+               scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
+                scale_x_discrete(limits = nom_ent) + 
+                 labs(title = "Población de Nacimiento",
+                      subtitle = "Residentes en el estado",
+                      y = "",
+                      x = "", 
+                      color = "", 
+                      fill = "")
 
 p
 path = paste0(here::here(), "/Graficos/MNAC (Residentes) a nivel estatal.pdf") 
 ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
 ```
 
-
-## Inmigrantes
+#### Inmigrantes
 
 ```{r}
 tabla <- P.Nacimiento %>%
-  arrange(Inmigrantes) %>%
-  droplevels() 
+          arrange(Inmigrantes) %>%
+           droplevels() 
 
 ent <- tabla %>% pull(CVE_ENT)
 nom_ent <- tabla %>% pull(NOM_ENT)
 
 p <- tabla %>%
-  ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
-  geom_line(aes(y =Inmigrantes, color = "LINE1")) +
-  geom_ribbon(aes(ymin = Inmigrantes_low, ymax = Inmigrantes_upp), alpha = 0.2) + 
-  geom_line(aes(y = Inmigrantes_Censo, color = "LINE2")) + 
-  theme_minimal() + 
-  theme(plot.title = element_text(family = "Montserrat Medium", size = 20), 
-        plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
-        axis.text = element_text(family = "Montserrat Medium", size = 10), 
-        axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
-        axis.title = element_text(family = "Montserrat Medium", size = 12),
-        legend.text = element_text(family = "Montserrat Medium"),
-        legend.title = element_text(family = "Montserrat Medium")) + 
-  scale_colour_manual(labels = c("Muestra", "Censo"),
-                      values = c("LINE1" = "blue", "LINE2" = "red")) +
-  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
-  scale_x_discrete(limits = nom_estados) + 
-  labs(title = "Población Nacimiento",
-       subtitle = "Nacidos en otro estado (Inmigrantes)",
-       y = "",
-       x = "", 
-       color = "", 
-       fill = "")
+      ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
+       geom_line(aes(y = Inmigrantes, color = "LINE1")) +
+        geom_ribbon(aes(ymin = Inmigrantes_low, ymax = Inmigrantes_upp), alpha = 0.2) + 
+         geom_line(aes(y = Inmigrantes_Censo, color = "LINE2")) + 
+          theme_minimal() + 
+           theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"), 
+                 plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                 plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
+                 axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                 axis.title = element_text(family = "Montserrat Medium", size = 12),
+                 axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                 legend.text = element_text(family = "Montserrat Medium"),
+                 legend.title = element_text(family = "Montserrat Medium")) + 
+              scale_colour_manual(labels = c("Muestra", "Censo"),
+                                 values = c("LINE1" = "blue", "LINE2" = "red")) +
+               scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
+                scale_x_discrete(limits = nom_ent) + 
+                 labs(title = "Población de Nacimiento",
+                      subtitle = "Nacidos en otro estado (Inmigrantes)",
+                      y = "",
+                      x = "", 
+                      color = "", 
+                      fill = "")
 
 p
 path = paste0(here::here(), "/Graficos/MNAC (Inmigrantes) a nivel estatal.pdf") 
-ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
+ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")           
 ```
 
 
-## Emigrantes
+
+#### Emigrantes
 
 ```{r}
 tabla <- P.Nacimiento %>%
-  arrange(Emigrantes) %>%
-  droplevels() 
+          arrange(Emigrantes) %>%
+           droplevels() 
 
 ent <- tabla %>% pull(CVE_ENT)
 nom_ent <- tabla %>% pull(NOM_ENT)
 
 p <- tabla %>%
-  ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
-  geom_line(aes(y = Emigrantes, color = "LINE1")) +
-  geom_ribbon(aes(ymin = Emigrantes_low, ymax = Emigrantes_upp), alpha = 0.2) + 
-  geom_line(aes(y = Emigrantes_Censo, color = "LINE2")) + 
-  theme_minimal() + 
-  theme(plot.title = element_text(family = "Montserrat Medium", size = 20), 
-        plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
-        axis.text = element_text(family = "Montserrat Medium", size = 10), 
-        axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
-        axis.title = element_text(family = "Montserrat Medium", size = 12),
-        legend.text = element_text(family = "Montserrat Medium"),
-        legend.title = element_text(family = "Montserrat Medium")) + 
-  scale_colour_manual(labels = c("Muestra", "Censo"),
-                      values = c("LINE1" = "blue", "LINE2" = "red")) +
-  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
-  scale_x_discrete(limits = nom_estados) + 
-  labs(title = "Población Nacimiento",
-       subtitle = "Nacidos en otro estado (Emigrantes)",
-       y = "",
-       x = "", 
-       color = "", 
-       fill = "")
-
+      ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
+       geom_line(aes(y = Emigrantes, color = "LINE1")) +
+        geom_ribbon(aes(ymin = Emigrantes_low, ymax = Emigrantes_upp), alpha = 0.2) + 
+         geom_line(aes(y = Emigrantes_Censo, color = "LINE2")) + 
+          theme_minimal() + 
+           theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"), 
+                 plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                 plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
+                 axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                 axis.title = element_text(family = "Montserrat Medium", size = 12),
+                 axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                 legend.text = element_text(family = "Montserrat Medium"),
+                 legend.title = element_text(family = "Montserrat Medium")) + 
+              scale_colour_manual(labels = c("Muestra", "Censo"),
+                                 values = c("LINE1" = "blue", "LINE2" = "red")) +
+               scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
+                scale_x_discrete(limits = nom_ent) + 
+                 labs(title = "Población de Nacimiento",
+                      subtitle = "Nacidos en otro estado (Emigrantes)",
+                      y = "",
+                      x = "", 
+                      color = "", 
+                      fill = "")
 p
 path = paste0(here::here(), "/Graficos/MNAC (Emigrantes) a nivel estatal.pdf") 
 ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
 ```
 
-
 ## Tasa de Inmigrantes
 
 ```{r}
 T.MNac <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion interna 2020.xlsx"), startRow = 6, skipEmptyCols = TRUE,
-                    sheet = "T. MNac") 
-
-T.MNac <- T.MNac %>%
-  as.data.frame() %>%
-  filter(NOM_ENT %nin% "Total")
-names(T.MNac)
-str(T.MNac)
+                    sheet = "T. MNac") %>%
+                     filter(NOM_ENT %nin% "Total")
 ```
 
 
