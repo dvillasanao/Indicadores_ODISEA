@@ -149,8 +149,8 @@ Se seleccionan las variables que se desean conservar para la realización de est
 
 **Posibles variables que se pueden contemplar en la migración reciente**
   
-  -   `EDAD`   
--   `SEXO`  
+-   `EDAD` \   
+-   `SEXO` \  
 -   `AFRODES`\   
 -   `HLENGUA`\   
 -   `QDIALECT_INALI`    
@@ -1234,16 +1234,16 @@ variables_a_procesar <- c("Pob.Total", "Pob_5ymas", "Residentes", "Inmigrantes",
 
 ```{r, class.source = "fold-hide"}
 Indicadores_Totales <- svy_design %>%
-                         dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_MUN", M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          Pob_5ymas = survey_total(ifelse(variable %in% "CVE_MUN", Pob.5ymas, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          Residentes = survey_total(ifelse(variable %in% "CVE_MUN", Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          Inmigrantes = survey_total(ifelse(variable %in% "CVE_MUN", Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_MUN", Migrantes, 0),
-                                                                      denominator = ifelse(variable %in% "CVE_MUN", Pob.5ymas, 0), 
+                         dplyr::summarise(Pob.Total = survey_total(ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, M, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Pob_5ymas = survey_total(ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Pob.5ymas, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Residentes = survey_total(ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Residentes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          Inmigrantes = survey_total(ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          TInmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Migrantes, 0),
+                                                                      denominator = ifelse(variable %in% "CVE_MUN" & nchar(value) > 0, Pob.5ymas, 0), 
                                                                       vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          Emigrantes = survey_total(ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
-                                          TEmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios, Migrantes, 0),
-                                                                     denominator = ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios, PPob, 0), 
+                                          Emigrantes = survey_total(ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios & nchar(value) > 0, Migrantes, 0), vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
+                                          TEmigracion = survey_ratio(numerator = ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios & nchar(value) > 0, Migrantes, 0),
+                                                                     denominator = ifelse(variable %in% "CVE_MUN_RES" & value %in% municipios & nchar(value) > 0, PPob, 0), 
                                                                      vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE),
                                           MN = Inmigrantes - Emigrantes,
                                           MB = Inmigrantes + Emigrantes,
@@ -1252,6 +1252,10 @@ Indicadores_Totales <- svy_design %>%
                                           Eficacia = MN - MB
                                           #IEM = svyratio(numerator = MN, denominator = MB, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE) #Índice de Eficacia Migratoria
                                           ) 
+
+Indicadores_Totales %>%
+ as.data.frame() %>%
+  mutate(across(where(is.numeric), ~ prettyNum(., big.mark = " ", preserve.width = "none")))
 ```
 
 **Indicadores de migración reciente hace 5 años (Municipios)** 
