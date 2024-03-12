@@ -1399,7 +1399,7 @@ p <- tabla %>%
                                  values = c("LINE1" = "blue", "LINE2" = "red")) +
                scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
                 scale_x_discrete(limits = nom_ent) + 
-                 labs(title = "Población de Nacimiento",
+                 labs(title = "Migración para toda la vida",
                       subtitle = "Residentes en el estado",
                       y = "",
                       x = "", 
@@ -1439,7 +1439,7 @@ p <- tabla %>%
                                  values = c("LINE1" = "blue", "LINE2" = "red")) +
                scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
                 scale_x_discrete(limits = nom_ent) + 
-                 labs(title = "Población de Nacimiento",
+                 labs(title = "Migración para toda la vida",
                       subtitle = "Nacidos en otro estado (Inmigrantes)",
                       y = "",
                       x = "", 
@@ -1481,7 +1481,7 @@ p <- tabla %>%
                                  values = c("LINE1" = "blue", "LINE2" = "red")) +
                scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
                 scale_x_discrete(limits = nom_ent) + 
-                 labs(title = "Población de Nacimiento",
+                 labs(title = "Migración para toda la vida",
                       subtitle = "Nacidos en otro estado (Emigrantes)",
                       y = "",
                       x = "", 
@@ -1492,7 +1492,7 @@ path = paste0(here::here(), "/Graficos/MNAC (Emigrantes) a nivel estatal.pdf")
 ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
 ```
 
-## Tasa de Inmigrantes
+#### Tasa de Inmigrantes
 
 ```{r}
 T.MNac <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion interna 2020.xlsx"), startRow = 6, skipEmptyCols = TRUE,
@@ -1503,42 +1503,120 @@ T.MNac <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion inter
 
 ```{r}
 tabla <- T.MNac %>%
-  arrange(Tasa_Inmigracion_Censo) %>%
-  droplevels() 
+          arrange(Tasa_Inmigracion_Censo) %>%
+           mutate(diff = abs(Tasa_Inmigracion_Censo - Tasa_Inmigracion)) %>%
+            droplevels()  
 
 ent <- tabla %>% pull(CVE_ENT)
 nom_ent <- tabla %>% pull(NOM_ENT)
 
 p <- tabla %>%
-  ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
-  geom_text(aes(y = Tasa_Inmigracion, label = round(Tasa_Inmigracion, 1)), size = 2, vjust = -1.5) +
-  geom_text(aes(y = Tasa_Inmigracion_Censo, label = round(Tasa_Inmigracion_Censo, 1)), size = 2, vjust = 1.5, color = "#808080") +
-  geom_line(aes(y = Tasa_Inmigracion, color = "LINE1")) +
-  geom_ribbon(aes(ymin = Tasa_Inmigracion_low, ymax = Tasa_Inmigracion_upp), alpha = 0.2) + 
-  geom_line(aes(y = Tasa_Inmigracion_Censo, color = "LINE2")) +
-  theme_minimal() + 
-  theme(plot.title = element_text(family = "Montserrat Medium", size = 20), 
-        plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
-        axis.text = element_text(family = "Montserrat Medium", size = 10), 
-        axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
-        axis.title = element_text(family = "Montserrat Medium", size = 12),
-        legend.text = element_text(family = "Montserrat Medium"),
-        legend.title = element_text(family = "Montserrat Medium")) + 
-  scale_colour_manual(labels = c("Muestra", "Censo"),
-                      values = c("LINE1" = "blue", "LINE2" = "red")) +
-  #scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + 
-  scale_x_discrete(limits = nom_ent) + 
-  labs(title = "Tasa de Inmigración",
-       subtitle = "Nacidos en otro estado (Inmigrantes)",
-       y = "",
-       x = "", 
-       color = "", 
-       fill = "")
+      ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
+       geom_text(aes(y = -90, label = round(Tasa_Inmigracion, 1)), 
+                  size = 2, 
+                   angle = 45, 
+                    family = "Montserrat Medium",
+                     color = "#9C4F86") +
+        geom_text(aes(y = -190, label = round(Tasa_Inmigracion_Censo, 1)), 
+                   size = 2, 
+                    angle = 45,
+                     family = "Montserrat Medium",
+                      color = "#4A44A2") +
+         geom_text(aes(y = -420, label = round(diff, 1)), 
+                   size = 2, 
+                    angle = 45,
+                     alpha = 1, 
+                      family = "Montserrat Medium",
+                       fontface = "bold",
+                        colour = "#000000") + 
+          geom_line(aes(y = Tasa_Inmigracion, color = "LINE1")) +
+           geom_ribbon(aes(ymin = Tasa_Inmigracion_low, ymax = Tasa_Inmigracion_upp), alpha = 0.2) + 
+            geom_line(aes(y = Tasa_Inmigracion_Censo, color = "LINE2")) + 
+             theme_minimal() + 
+              theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"), 
+                    plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                    plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
+                    axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                    axis.title = element_text(family = "Montserrat Medium", size = 12),
+                    axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                    legend.text = element_text(family = "Montserrat Medium"),
+                    legend.title = element_text(family = "Montserrat Medium")) + 
+               scale_colour_manual(labels = c("Muestra", "Censo"),
+                                   values = c("LINE1" = "#9F0C74", "LINE2" = "#0F0978")) +
+                scale_y_continuous(breaks = seq(0, 1500, 500),
+                                   labels = scales::unit_format(unit = "", digits = 3)) + 
+                 scale_x_discrete(limits = nom_ent) + 
+                  labs(title = "Migración para toda la vida",
+                       subtitle = "Tasa de inmigración por cada mil",
+                       y = "",
+                       x = "", 
+                       color = "", 
+                       fill = "")
 
 p
 path = paste0(here::here(), "/Graficos/MNAC (Tasa de inmigracion) a nivel estatal.pdf") 
 ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
 ```
+
+
+#### Tasa de Emigración
+
+```{r}
+tabla <- T.MNac %>%
+          arrange(Tasa_Emigracion_Censo) %>%
+           mutate(diff = abs(Tasa_Emigracion_Censo - Tasa_Emigracion)) %>%
+            droplevels() 
+
+ent <- tabla %>% pull(CVE_ENT)
+nom_ent <- tabla %>% pull(NOM_ENT)
+
+p <- tabla %>%
+      ggplot(aes(x = order(factor(CVE_ENT, levels = ent)))) + 
+       geom_text(aes(y = -90, label = round(Tasa_Emigracion, 1)), 
+                  size = 2, 
+                   angle = 45, 
+                    family = "Montserrat Medium",
+                     color = "#9C4F86") +
+        geom_text(aes(y = -230, label = round(Tasa_Emigracion_Censo, 1)), 
+                   size = 2, 
+                    angle = 45,
+                     family = "Montserrat Medium",
+                      color = "#4A44A2") +
+         geom_text(aes(y = -450, label = round(diff, 1)), 
+                   size = 2, 
+                    angle = 45,
+                     alpha = 1, 
+                      family = "Montserrat Medium",
+                       fontface = "bold",
+                        colour = "#000000") +
+         geom_line(aes(y = Tasa_Emigracion, color = "LINE1")) +
+          geom_ribbon(aes(ymin = Tasa_Emigracion_low, ymax = Tasa_Emigracion_upp), alpha = 0.2) + 
+           geom_line(aes(y = Tasa_Emigracion_Censo, color = "LINE2")) + 
+            theme_minimal() + 
+             theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"), 
+                   plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                   plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
+                   axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                   axis.title = element_text(family = "Montserrat Medium", size = 12),
+                   axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                   legend.text = element_text(family = "Montserrat Medium"),
+                   legend.title = element_text(family = "Montserrat Medium")) + 
+                scale_colour_manual(labels = c("Muestra", "Censo"),
+                                    values = c("LINE1" = "#9F0C74", "LINE2" = "#0F0978")) +
+                 scale_y_continuous(labels = scales::unit_format(unit = "", digits = 3)) + 
+                  scale_x_discrete(limits = nom_ent) + 
+                   labs(title = "Migración para toda la vida",
+                        subtitle = "Tasa de emigración por cada mil",
+                        y = "",
+                        x = "", 
+                        color = "", 
+                        fill = "")
+
+p
+path = paste0(here::here(), "/Graficos/MNAC (Tasa de emigracion) a nivel estatal.pdf") 
+ggexport(p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
+```
+
 
 
 
