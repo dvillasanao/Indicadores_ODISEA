@@ -2003,7 +2003,7 @@ Pob.Total <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion in
 tabla <- Pob.Total %>%
           arrange(Pob.Total) %>%
            droplevels() %>%
-            mutate(CV = .$Pob.Total_cv*100) %>% 
+            mutate(CV = .$Pob.Total_cv * 100) %>% 
              mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de presición"
                                          .$CV >= 15 & .$CV < 30 ~ "Moderada",
                                          .$CV >= 30 ~ "Baja")) %>%
@@ -2014,42 +2014,226 @@ nom_mun <- tabla %>% pull(NOM_MUN)
 
 ## Colores
 colores <- c("#B41653", "#1665B4", "#16B49D")
+lineas <- c("#810937", "#0A3C6E", "#258B7C")
                
 p <- list()
 Muestra <- unique(tabla$MUN_Muestra)
 Grados <- unique(tabla$CV_Grado)
 for(i in 1:2){
   for(j in 1:3) {
+    n <- tabla %>%
+          filter(MUN_Muestra %in% Muestra[i]) %>% 
+           filter(CV_Grado %in% Grados[j]) %>%
+            count()
+    
     p[[paste0(Muestra[i])]][[paste0(Grados[j])]] <- tabla %>%
-                                                      filter(MUN_Muestra %in% Muestra[i]) %>% 
-                                                       filter(CV_Grado %in% Grados[j]) %>% 
-                                                        ggplot(aes(x = order(factor(CVE_MUN, levels = ent)))) + 
-                                                         geom_line(aes(y = Pob.Total, color = CV_Grado)) +
-                                                         geom_ribbon(aes(ymin = Pob.Total_low, ymax = Pob.Total_upp, color = CV_Grado, fill = CV_Grado), alpha = 0.2) + 
-                                                          geom_line(aes(y = Pob.Total_Censo)) + 
+                                                     filter(MUN_Muestra %in% Muestra[i]) %>% 
+                                                      filter(CV_Grado %in% Grados[j]) %>% 
+                                                       ggplot(aes(x = order(factor(CVE_MUN, levels = mun)))) + 
+                                                        geom_line(aes(y = Pob.Total, color = CV_Grado, size = "size1")) +
+                                                         geom_ribbon(aes(ymin = Pob.Total_low, ymax = Pob.Total_upp, 
+                                                                         color = CV_Grado, 
+                                                                         fill = CV_Grado), alpha = 0.2) + 
+                                                          geom_line(aes(y = Pob.Total_Censo, size = "size2"), color = "#A1A1A1", linetype = 1) + 
                                                            theme_minimal() + 
                                                             theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"), 
                                                                   plot.title = element_text(family = "Montserrat Medium", size = 20), 
                                                                   plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
                                                                   axis.text = element_text(family = "Montserrat Medium", size = 10), 
                                                                   axis.title = element_text(family = "Montserrat Medium", size = 12),
+                                                                  axis.title.x =   element_text(family = "Montserrat Medium", size = 8, hjust = 1),
                                                                   axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
                                                                   legend.text = element_text(family = "Montserrat Medium"),
                                                                   legend.title = element_text(family = "Montserrat Medium")) + 
-                                                            scale_color_manual(values = colores[j]) +  
-                                                             scale_fill_manual(values = colores[j]) +  
-                                                              scale_y_continuous(labels = scales::unit_format(unit = "", scale = 1e-3)) + 
+                                                             guides(size = guide_legend(override.aes = list(size = c(0.5, 0.5), color = c(lineas[j], "#A1A1A1")))) +
+                                                              scale_size_manual(labels = c("Muestra", "Censo"), values = c(1, 0.5)) +
+                                                               scale_color_manual(values = colores[j]) +  
+                                                                scale_fill_manual(values = lineas[j]) +  
+                                                                 scale_y_continuous(labels = scales::unit_format(unit = "", scale = 1e-3)) + 
                                                              # scale_x_discrete(limits = nom_estados) + 
                                                              labs(title = "Población Total",
-                                                                  subtitle = paste(Muestra[i], "/", Grados[j]),
+                                                                  subtitle = paste(Muestra[i], "/ Precisión", Grados[j]),
                                                                   y = "Población Total",
-                                                                  x = "", 
+                                                                  x = paste(n, "municipios"), 
+                                                                  size = "",
                                                                   color = "", 
                                                                   fill = "") 
   }
 }
+
 p
 path = paste0(here::here(), "/Graficos/Pob_Total a nivel municipal.pdf") 
+ggexport(list = p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
+```
+
+
+### Migración reciente {.tabset .tabset-pills}
+
+#### Residentes
+
+```{r}
+Pob.Total <- read.xlsx(paste0(here::here(), "/Output/Indicadores de migracion interna 2020.xlsx"), startRow = 7, skipEmptyCols = TRUE,
+                        sheet = "Lugar de residencia (Municipio)") %>%
+              filter(CVE_MUN != "Total") %>%
+               na.omit()
+```
+
+
+
+```{r}
+tabla <- Pob.Total %>%
+          arrange(Residentes) %>%
+           droplevels() %>%
+            mutate(CV = .$Residentes_cv * 100) %>% 
+             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de presición"
+                                         .$CV >= 15 & .$CV < 30 ~ "Moderada",
+                                         .$CV >= 30 ~ "Baja")) %>%
+              mutate(CV_Grado = forcats::fct_relevel(.$CV_Grado, c("Alta", "Moderada", "Baja")))
+table(tabla$TAM_MUN, tabla$MUN_Muestra, tabla$CV_Grado)
+mun <- tabla %>% pull(CVE_MUN)
+nom_mun <- tabla %>% pull(NOM_MUN)
+
+## Colores
+colores <- c("#B41653", "#1665B4", "#16B49D")
+lineas <- c("#810937", "#0A3C6E", "#258B7C")
+               
+p <- list()
+Muestra <- unique(tabla$MUN_Muestra)
+Grados <- unique(tabla$CV_Grado)
+for(i in 1:2){
+  for(j in 1:3) {
+    n <- tabla %>%
+          filter(MUN_Muestra %in% Muestra[i]) %>% 
+           filter(CV_Grado %in% Grados[j]) %>%
+            count()
+    
+    p[[paste0(Muestra[i])]][[paste0(Grados[j])]] <- tabla %>%
+                                                     filter(MUN_Muestra %in% Muestra[i]) %>% 
+                                                      filter(CV_Grado %in% Grados[j]) %>% 
+                                                       ggplot(aes(x = order(factor(CVE_MUN, levels = mun)))) + 
+                                                        geom_line(aes(y = Pob.Total, color = CV_Grado, size = "size1")) +
+                                                         geom_ribbon(aes(ymin = Pob.Total_low, ymax = Pob.Total_upp, 
+                                                                         color = CV_Grado, 
+                                                                         fill = CV_Grado), alpha = 0.2) + 
+                                                          geom_line(aes(y = Pob.Total_Censo, size = "size2"), color = "#A1A1A1", linetype = 1) + 
+                                                           theme_minimal() + 
+                                                            theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"), 
+                                                                  plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                                                                  plot.subtitle = element_text(family = "Montserrat Medium", size = 15), 
+                                                                  axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                                                                  axis.title = element_text(family = "Montserrat Medium", size = 12),
+                                                                  axis.title.x =   element_text(family = "Montserrat Medium", size = 8, hjust = 1),
+                                                                  axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                                                                  legend.text = element_text(family = "Montserrat Medium"),
+                                                                  legend.title = element_text(family = "Montserrat Medium")) + 
+                                                             guides(size = guide_legend(override.aes = list(size = c(0.5, 0.5), color = c(lineas[j], "#A1A1A1")))) +
+                                                              scale_size_manual(labels = c("Muestra", "Censo"), values = c(1, 0.5)) +
+                                                               scale_color_manual(values = colores[j]) +  
+                                                                scale_fill_manual(values = lineas[j]) +  
+                                                                 scale_y_continuous(labels = scales::unit_format(unit = "", scale = 1e-3)) + 
+                                                             # scale_x_discrete(limits = nom_estados) + 
+                                                             labs(title = "Migración reciente",
+                                                                  subtitle = paste(Muestra[i], "/", Grados[j]),
+                                                                  y = "Residentes",
+                                                                  x = paste(n, "municipios"), 
+                                                                  size = "",
+                                                                  color = "", 
+                                                                  fill = "") 
+  }
+}
+
+p
+path = paste0(here::here(), "/Graficos/MR5a (Residentes) a nivel municipal.pdf") 
+ggexport(list = p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
+```
+
+**Municipios muestreados o censados | Tamaño de municipio | Precisión de la muestra"
+
+```{r}
+tabla <- Pob.Total %>%
+          select(CVE_MUN, Residentes, Residentes_Censo, Residentes_cv, Residentes_low, Residentes_upp, MUN_Muestra, TAM_MUN) %>%
+           arrange(Residentes) %>%
+            mutate(CV = .$Residentes_cv * 100) %>% 
+             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de presición"
+                                         .$CV >= 15 & .$CV < 30 ~ "Moderada",
+                                         .$CV >= 30 ~ "Baja")) %>%
+              droplevels() %>%
+               mutate(CV_Grado = forcats::fct_relevel(.$CV_Grado, c("Alta", "Moderada", "Baja")),
+                      TAM_MUN = forcats::fct_relevel(.$TAM_MUN, c("1 - 2 499 habitantes", "2 5000 a 14 999 habitantes", "15 000 a 49 999 habitantes", "50 000 a 99 999 habitantes", "100 000 y más habitantes" )))
+
+table(tabla$MUN_Muestra, tabla$CV_Grado, tabla$TAM_MUN)
+table(tabla$MUN_Muestra)
+mun <- tabla %>% pull(CVE_MUN)
+#nom_mun <- tabla %>% pull(NOM_MUN)
+
+## Colores
+colores <- c("#C70E7B", "#E7467F","#E58560", "#D49E46", "#25B99F",  "#5D6093")
+lineas <- c("#B41676", "#CD2C65","#C36D4B", "#C18D37", "#188F7A",  "#393C77")
+               
+p <- list()
+Muestra <- c("Municipio censado", "Municipio muestreado")
+Grados <- c("Alta", "Moderada", "Baja")
+TAM <- c("1 - 2 499 habitantes", "2 5000 a 14 999 habitantes", "15 000 a 49 999 habitantes", "50 000 a 99 999 habitantes", "100 000 y más habitantes")
+
+for(i in 1:2){
+  for(j in 1:3) {
+   for(k in 1:5) {
+      n <- tabla %>%
+            filter(MUN_Muestra %in% Muestra[i]) %>% 
+             filter(CV_Grado %in% Grados[j]) %>% 
+              filter(TAM_MUN %in%  TAM[k]) %>%
+               count()
+      
+      tabla1 <- tabla %>%
+                 filter(MUN_Muestra %in% Muestra[i]) %>% 
+                  filter(CV_Grado %in% Grados[j]) %>% 
+                   filter(TAM_MUN %in% TAM[k])
+      
+      mun <- tabla1 %>% pull(CVE_MUN)
+     
+    p[[paste0(Muestra[i])]][[paste0(Grados[j])]][[paste0(TAM[k])]] <- tabla1 %>%
+                                                                           ggplot(aes(x = order(factor(CVE_MUN, levels = mun)))) + 
+                                                                            geom_line(aes(y = Residentes, 
+                                                                                          color = TAM_MUN, 
+                                                                                          size = "size1")) + 
+                                                                             geom_ribbon(aes(ymin = Residentes_low, 
+                                                                                             ymax = Residentes_upp, 
+                                                                                             color = TAM_MUN,
+                                                                                             fill = TAM_MUN), 
+                                                                                         alpha = 0.2) + 
+                                                                               geom_line(aes(y = Residentes_Censo, 
+                                                                                             size = "size2"), 
+                                                                                          color = "#A1A1A1", 
+                                                                                           linetype = 1) + 
+                                                                                theme_minimal() + 
+                                                                                 theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"),
+                                                                                       plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                                                                                       plot.subtitle = element_text(family = "Montserrat Medium", size = 12, color = "#8D8D8D"), 
+                                                                                       axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                                                                                       axis.title = element_text(family = "Montserrat Medium", size = 12),
+                                                                                       axis.title.x =   element_text(family = "Montserrat Medium", size = 8, hjust = 1),
+                                                                                       axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                                                                                       legend.text = element_text(family = "Montserrat Medium"),
+                                                                                       legend.title = element_text(family = "Montserrat Medium")) + 
+                                                                                  guides(size = guide_legend(override.aes = list(size = c(0.5, 0.5), color = c(lineas[k], "#A1A1A1")))) +
+                                                                                  scale_size_manual(labels = c("Muestra", "Censo"), values = c(1, 0.5)) +
+                                                                                   scale_color_manual(values = colores[k]) +  
+                                                                                    scale_fill_manual(values = lineas[k]) +  
+                                                                                     scale_y_continuous(labels = scales::unit_format(unit = "", scale = 1, sep = " ", big.mark = " ")) + 
+                                                                                   # scale_x_discrete(limits = nom_estados) + 
+                                                                                     labs(title = "Migración reciente",
+                                                                                          subtitle = paste("Residentes", "\n", Muestra[i], "\n", "Precisión", Grados[j], "\n", TAM[k]),
+                                                                                          y = "",
+                                                                                          x = paste(n, "municipios"), 
+                                                                                          size = "",
+                                                                                          color = "", 
+                                                                                          fill = "") 
+    }
+  }
+}
+
+p
+path = paste0(here::here(), "/Graficos/MR5a (Residentes) a nivel municipal_Tamaño de municipio.pdf") 
 ggexport(list = p, width = 9, height = 7, dpi = 400, filename = path, device = "cairo_pdf")      
 ```
 
