@@ -2004,7 +2004,7 @@ tabla <- Pob.Total %>%
           arrange(Pob.Total) %>%
            droplevels() %>%
             mutate(CV = .$Pob.Total_cv * 100) %>% 
-             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de presición"
+             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de precisión"
                                          .$CV >= 15 & .$CV < 30 ~ "Moderada",
                                          .$CV >= 30 ~ "Baja")) %>%
               mutate(CV_Grado = forcats::fct_relevel(.$CV_Grado, c("Alta", "Moderada", "Baja")))
@@ -2085,7 +2085,7 @@ tabla <- Pob.Total %>%
           arrange(Residentes) %>%
            droplevels() %>%
             mutate(CV = .$Residentes_cv * 100) %>% 
-             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de presición"
+             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de precisión"
                                          .$CV >= 15 & .$CV < 30 ~ "Moderada",
                                          .$CV >= 30 ~ "Baja")) %>%
               mutate(CV_Grado = forcats::fct_relevel(.$CV_Grado, c("Alta", "Moderada", "Baja")))
@@ -2160,7 +2160,7 @@ tabla <- Pob.Total %>%
           select(CVE_MUN, Residentes, Residentes_Censo, Residentes_cv, Residentes_low, Residentes_upp, MUN_Muestra, TAM_MUN) %>%
            arrange(Residentes) %>%
             mutate(CV = .$Residentes_cv * 100) %>% 
-             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de presición"
+             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de precisión"
                                          .$CV >= 15 & .$CV < 30 ~ "Moderada",
                                          .$CV >= 30 ~ "Baja")) %>%
               droplevels() %>%
@@ -2252,7 +2252,7 @@ tabla <- Pob.Total %>%
           arrange(Inmigrantes) %>%
            droplevels() %>%
             mutate(CV = .$Inmigrantes_cv * 100) %>% 
-             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de presición"
+             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de precisión"
                                          .$CV >= 15 & .$CV < 30 ~ "Moderada",
                                          .$CV >= 30 ~ "Baja")) %>%
               mutate(CV_Grado = forcats::fct_relevel(.$CV_Grado, c("Alta", "Moderada", "Baja")))
@@ -2321,7 +2321,7 @@ tabla <- Pob.Total %>%
           select(CVE_MUN, Inmigrantes, Inmigrantes_Censo, Inmigrantes_cv, Inmigrantes_low, Inmigrantes_upp, MUN_Muestra, TAM_MUN) %>%
            arrange(Inmigrantes) %>%
             mutate(CV = .$Inmigrantes_cv * 100) %>% 
-             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de presición"
+             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de precisión"
                                          .$CV >= 15 & .$CV < 30 ~ "Moderada",
                                          .$CV >= 30 ~ "Baja")) %>%
               droplevels() %>%
