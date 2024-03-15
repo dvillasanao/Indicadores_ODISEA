@@ -186,7 +186,8 @@ load(file = paste0(here::here(), "/Bases/01_Migracion interna_2020.RData"))
 
 # Para fines prácticos se genera un ponderador de uno 
 mydata <- mydata %>%
-           select(ID_VIV, ID_PERSONA, CVE_ENT, ENT, MUN, CVE_MUN, LOC50K, COBERTURA, ENT_PAIS_NAC, ENT_PAIS_RES_5A, MUN_RES_5A, CVE_MUN_RES15, EDAD, COBERTURA, FACTOR, ESTRATO, UPM) %>%
+           select(ID_VIV, ID_PERSONA, CVE_ENT, ENT, MUN, CVE_MUN, LOC50K, COBERTURA, ENT_PAIS_NAC, ENT_PAIS_RES_5A, MUN_RES_5A,
+                  CVE_MUN_RES15, EDAD, COBERTURA, FACTOR, ESTRATO, UPM) %>%
            mutate(M = 1)  %>%
             mutate(NOM_ENT = as.factor(.$CVE_ENT)) %>%
              ungroup()
@@ -275,19 +276,32 @@ OUTPUTFILE XLS "Output\Residencia_Habitual a nivel estatal_2020.xlsx" OVERWRITE
 
 ```{r}
 options(survey.lonely.psu = "adjust")
+#options("survey.ultimate.cluster" = FALSE)
 
 MC <- mydata %>%
        as.data.frame() %>%
-        select(FACTOR, ESTRATO, UPM, CVE_ENT) %>%
-         mutate(probs = 1/.$FACTOR) %>%
-          mutate(Pob.Total = 1,
-                 M = 1) 
+        select(ID_VIV, ID_PERSONA, FACTOR, ESTRATO, UPM, CVE_ENT) %>%
+          mutate(probs = 1/.$FACTOR) %>%
+           mutate(Pob.Total = 1,
+                  M = 1) 
+MC1 <- MC %>%
+        group_by(UPM, ESTRATO) %>% 
+         summarise(n = n(), .groups = 'drop') %>%
+          mutate(fpc = n/sum(n)) %>% 
+           right_join(MC, by = join_by(UPM, ESTRATO))
 
-svy_design <- MC  %>%
-               svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
-                          #weights = ~FACTOR, 
-                           nest = TRUE,
-                            probs = ~probs)
+svy_design <- MC1 %>% 
+               srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE,
+                                       #fpc = fpc, 
+                                       #pps = "brewer",
+                                       survey.lonely.psu = "adjust"
+                                        #variables = c("M"),
+                                       # variance = c("HT")
+                                       )
+prueba <- as.svrepdesign(svy_design, type = c("bootstrap"), replicates = 100)
+
+ Total_est <- prueba %>%
+              dplyr::summarise(Pob.Total = survey_total(M, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
 ```
 
 
@@ -2218,22 +2232,50 @@ Muestra <- c("Municipio censado", "Municipio muestreado")
 Grados <- c("Alta", "Moderada", "Baja")
 TAM <- c("1-2 499 habitantes", "2 500-4 999 habitantes", "5 000-9 999 habitantes", " 10 000-14 999 habitantes", "15 000 a 49 999 habitantes", "50 000-99 999 habitantes", "100 000 y más habitantes")
 
-for(i in 1:2){
+for(i in 1:2) {
   for(j in 1:3) {
    for(k in 1:7) {
-      n <- tabla %>%
-            filter(MUN_Muestra %in% Muestra[i]) %>% 
-             filter(CV_Grado %in% Grados[j]) %>% 
-              filter(TAM_MUN %in%  TAM[k]) %>%
-               count()
-      
-      tabla1 <- tabla %>%
+     n <- tabla %>%
+           filter(MUN_Muestra %in% Muestra[i]) %>% 
+            filter(CV_Grado %in% Grados[j]) %>% 
+             filter(TAM_MUN %in%  TAM[k]) %>%
+              count() 
+     tabla1 <- tabla %>%
                  filter(MUN_Muestra %in% Muestra[i]) %>% 
                   filter(CV_Grado %in% Grados[j]) %>% 
                    filter(TAM_MUN %in% TAM[k])
       
       mun <- tabla1 %>% pull(CVE_MUN)
-     
+      
+     if(n == 1){
+     p[[paste0(Muestra[i])]][[paste0(Grados[j])]][[paste0(TAM[k])]] <- tabla1 %>%
+                                                                        ggplot(aes(x = order(factor(CVE_MUN, levels = mun)))) + 
+                                                                         geom_point(aes(y = Residentes, 
+                                                                                        color = TAM_MUN),
+                                                                                          size = 2) + 
+                                                                          geom_ribbon(aes(ymin = Residentes_low, 
+                                                                                          ymax = Residentes_upp, 
+                                                                                          color = TAM_MUN,
+                                                                                          fill = TAM_MUN), 
+                                                                                       alpha = 0.7) + 
+                                                                           geom_point(aes(y = Residentes_Censo), 
+                                                                                       size = 2,
+                                                                                        color = "#A1A1A1") + 
+                                                                            theme +
+                                                                             guides(size = guide_legend(override.aes = list(size = c(0.5, 0.5), color = c(lineas[k], "#A1A1A1")))) +
+                                                                                  scale_size_manual(labels = c("Muestra", "Censo"), values = c(1, 0.5)) +
+                                                                                   scale_color_manual(values = colores[k]) +  
+                                                                                    scale_fill_manual(values = lineas[k]) +  
+                                                                                     scale_y_continuous(labels = scales::unit_format(unit = "", scale = 1, sep = " ", big.mark = " ")) + 
+                                                                                    # scale_x_discrete(limits = nom_estados) + 
+                                                                                     labs(title = "Migración reciente",
+                                                                                          subtitle = paste("Residentes", "\n", Muestra[i], "\n", "Precisión", Grados[j], "\n", TAM[k]),
+                                                                                          y = "",
+                                                                                          x = paste(n, "municipios"), 
+                                                                                          size = "",
+                                                                                          color = "", 
+                                                                                          fill = "")  
+     } else { 
     p[[paste0(Muestra[i])]][[paste0(Grados[j])]][[paste0(TAM[k])]] <- tabla1 %>%
                                                                            ggplot(aes(x = order(factor(CVE_MUN, levels = mun)))) + 
                                                                             geom_line(aes(y = Residentes, 
@@ -2248,22 +2290,13 @@ for(i in 1:2){
                                                                                              size = "size2"), 
                                                                                           color = "#A1A1A1", 
                                                                                            linetype = 1) + 
-                                                                                theme_minimal() + 
-                                                                                 theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"),
-                                                                                       plot.title = element_text(family = "Montserrat Medium", size = 20), 
-                                                                                       plot.subtitle = element_text(family = "Montserrat Medium", size = 12, color = "#8D8D8D"), 
-                                                                                       axis.text = element_text(family = "Montserrat Medium", size = 10), 
-                                                                                       axis.title = element_text(family = "Montserrat Medium", size = 12),
-                                                                                       axis.title.x =   element_text(family = "Montserrat Medium", size = 8, hjust = 1),
-                                                                                       axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
-                                                                                       legend.text = element_text(family = "Montserrat Medium"),
-                                                                                       legend.title = element_text(family = "Montserrat Medium")) + 
-                                                                                  guides(size = guide_legend(override.aes = list(size = c(0.5, 0.5), color = c(lineas[k], "#A1A1A1")))) +
+                                                                                theme + 
+                                                                                 guides(size = guide_legend(override.aes = list(size = c(0.5, 0.5), color = c(lineas[k], "#A1A1A1")))) +
                                                                                   scale_size_manual(labels = c("Muestra", "Censo"), values = c(1, 0.5)) +
                                                                                    scale_color_manual(values = colores[k]) +  
                                                                                     scale_fill_manual(values = lineas[k]) +  
                                                                                      scale_y_continuous(labels = scales::unit_format(unit = "", scale = 1, sep = " ", big.mark = " ")) + 
-                                                                                   # scale_x_discrete(limits = nom_estados) + 
+                                                                                    # scale_x_discrete(limits = nom_estados) + 
                                                                                      labs(title = "Migración reciente",
                                                                                           subtitle = paste("Residentes", "\n", Muestra[i], "\n", "Precisión", Grados[j], "\n", TAM[k]),
                                                                                           y = "",
@@ -2271,6 +2304,7 @@ for(i in 1:2){
                                                                                           size = "",
                                                                                           color = "", 
                                                                                           fill = "") 
+      }
     }
   }
 }
@@ -2413,7 +2447,7 @@ for(i in 1:2) {
                                                                                           ymax = Inmigrantes_upp, 
                                                                                           color = TAM_MUN,
                                                                                           fill = TAM_MUN), 
-                                                                                       alpha = 0.2) + 
+                                                                                       alpha = 0.7) + 
                                                                            geom_point(aes(y = Inmigrantes_Censo), 
                                                                                        size = 2,
                                                                                         color = "#A1A1A1") + 
@@ -2600,7 +2634,7 @@ for(i in 1:2) {
                                                                                           ymax = Emigrantes_upp, 
                                                                                           color = TAM_MUN,
                                                                                           fill = TAM_MUN), 
-                                                                                       alpha = 0.2) + 
+                                                                                       alpha = 0.7) + 
                                                                            geom_point(aes(y = Emigrantes_Censo), 
                                                                                        size = 2,
                                                                                         color = "#A1A1A1") + 
@@ -2793,7 +2827,7 @@ for(i in 1:2){
                                                                                           ymax = TInmigracion_upp, 
                                                                                           color = TAM_MUN,
                                                                                           fill = TAM_MUN), 
-                                                                                       alpha = 0.2) + 
+                                                                                       alpha = 0.7) + 
                                                                            geom_point(aes(y = TInmigracion_Censo), 
                                                                                        size = 2,
                                                                                         color = "#A1A1A1") + 
@@ -3065,7 +3099,7 @@ for(i in 1:2){
                                                                                           ymax = MN_upp, 
                                                                                           color = TAM_MUN,
                                                                                           fill = TAM_MUN), 
-                                                                                       alpha = 0.2) + 
+                                                                                       alpha = 0.7) + 
                                                                            geom_point(aes(y = MN_Censo), 
                                                                                        size = 2,
                                                                                         color = "#A1A1A1") + 
@@ -3199,7 +3233,7 @@ ggexport(list = p, width = 12, height = 7, dpi = 400, filename = path, device = 
 ```{r}
 tabla <- Pob.Total %>%
           select(CVE_MUN, TNM, TNM_Censo, TNM_cv, TNM_low, TNM_upp, MUN_Muestra, TAM_MUN) %>%
-           arrange(TNM) %>%
+           arrange(TNM, TNM_Censo) %>%
             mutate(CV = .$TNM_cv * 100) %>% 
              mutate(CV_Grado = case_when(abs(.$CV) >= 0 & abs(.$CV) < 15 ~ "Alta", #Grado de precisión"
                                          abs(.$CV) >= 15 & abs(.$CV) < 30 ~ "Moderada",
@@ -3243,7 +3277,7 @@ for(i in 1:2){
      tabla1 <- tabla %>%
                  filter(MUN_Muestra %in% Muestra[i]) %>% 
                   filter(CV_Grado %in% Grados[j]) %>% 
-                   filter(TAM_MUN %in% TAM[k])
+                   filter(TAM_MUN %in% TAM[k]) %>% 
       
       mun <- tabla1 %>% pull(CVE_MUN)
       
@@ -3257,7 +3291,7 @@ for(i in 1:2){
                                                                                           ymax = TNM_upp, 
                                                                                           color = TAM_MUN,
                                                                                           fill = TAM_MUN), 
-                                                                                       alpha = 0.2) + 
+                                                                                       alpha = 0.7) + 
                                                                            geom_point(aes(y = TNM_Censo), 
                                                                                        size = 2,
                                                                                         color = "#A1A1A1") + 
