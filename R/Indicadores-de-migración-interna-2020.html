@@ -1816,6 +1816,17 @@ Ampliado.</p>
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">EDAD =</span> <span class="fu">as.numeric</span>(.<span class="sc">$</span>EDAD)) <span class="sc">%&gt;%</span></span>
 <span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="fu">subset</span>(EDAD <span class="sc">&gt;=</span> <span class="dv">5</span> <span class="sc">&amp;</span> EDAD <span class="sc">&lt;=</span> <span class="dv">130</span>) <span class="sc">%&gt;%</span></span>
 <span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="fu">filter</span>(ENT_PAIS_RES_5A <span class="sc">%in%</span> estados)  <span class="co"># Filtro del lugar de residencia dentro del país. </span></span></code></pre></div>
+<p><strong>Diferencias en la estimación de la varianza</strong></p>
+<p>Es importante identificar que, dentro del análisis de muestras
+complejas, existen una serie de variaciones en los cálculos de la
+estimación de la varianza. Ya que en los programas de licencia;
+<code>STATA</code>, <code>SAS</code>, <code>SPSS</code> o bien de
+licencia libre como <code>R</code>. Existen diferencias en las
+estimaciones de la varianza o propiamente del <strong>error
+estándar</strong>. En este documento se hace una revisión de estas
+discrepancias con los diferentes programas estadísticos y en donde se
+encuentran estas diferencias significativas del cálculo.<br />
+<a href="https://www.practicalsignificance.com/posts/understanding-the-survey-packages-recursive-algorithm/"><code>Understanding the code used to implement the {survey} package’s recursive variance estimation for multistage samples</code></a>.</p>
 <div id="nivel-estatal" class="section level1 tabset tabset-pills">
 <h1 class="tabset tabset-pills">Nivel estatal</h1>
 <div id="población-total" class="section level2 tabset tabset-pills">
@@ -1836,24 +1847,16 @@ OUTPUTFILE XLS &quot;Output\Residencia_Habitual a nivel estatal_2020.xlsx&quot; 
 <span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>          <span class="fu">mutate</span>(<span class="at">probs =</span> <span class="dv">1</span><span class="sc">/</span>.<span class="sc">$</span>FACTOR) <span class="sc">%&gt;%</span></span>
 <span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>           <span class="fu">mutate</span>(<span class="at">Pob.Total =</span> <span class="dv">1</span>,</span>
 <span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>                  <span class="at">M =</span> <span class="dv">1</span>) </span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>MC1 <span class="ot">&lt;-</span> MC <span class="sc">%&gt;%</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>FPC <span class="ot">&lt;-</span> MC <span class="sc">%&gt;%</span></span>
 <span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>        <span class="fu">group_by</span>(UPM, ESTRATO) <span class="sc">%&gt;%</span> </span>
 <span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>         <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">&#39;drop&#39;</span>) <span class="sc">%&gt;%</span></span>
 <span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>          <span class="fu">mutate</span>(<span class="at">fpc =</span> n<span class="sc">/</span><span class="fu">sum</span>(n)) <span class="sc">%&gt;%</span> </span>
 <span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>           <span class="fu">right_join</span>(MC, <span class="at">by =</span> <span class="fu">join_by</span>(UPM, ESTRATO))</span>
 <span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a></span>
-<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>svy_design <span class="ot">&lt;-</span> MC1 <span class="sc">%&gt;%</span> </span>
-<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>               srvyr<span class="sc">::</span><span class="fu">as_survey_design</span>(<span class="at">ids =</span> UPM, <span class="at">strata =</span> ESTRATO, <span class="at">probs =</span> probs, <span class="at">nest =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>                                       <span class="co">#fpc = fpc, </span></span>
-<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a>                                       <span class="co">#pps = &quot;brewer&quot;,</span></span>
-<span id="cb7-20"><a href="#cb7-20" tabindex="-1"></a>                                       <span class="at">survey.lonely.psu =</span> <span class="st">&quot;adjust&quot;</span></span>
-<span id="cb7-21"><a href="#cb7-21" tabindex="-1"></a>                                        <span class="co">#variables = c(&quot;M&quot;),</span></span>
-<span id="cb7-22"><a href="#cb7-22" tabindex="-1"></a>                                       <span class="co"># variance = c(&quot;HT&quot;)</span></span>
-<span id="cb7-23"><a href="#cb7-23" tabindex="-1"></a>                                       )</span>
-<span id="cb7-24"><a href="#cb7-24" tabindex="-1"></a>prueba <span class="ot">&lt;-</span> <span class="fu">as.svrepdesign</span>(svy_design, <span class="at">type =</span> <span class="fu">c</span>(<span class="st">&quot;bootstrap&quot;</span>), <span class="at">replicates =</span> <span class="dv">100</span>)</span>
-<span id="cb7-25"><a href="#cb7-25" tabindex="-1"></a></span>
-<span id="cb7-26"><a href="#cb7-26" tabindex="-1"></a> Total_est <span class="ot">&lt;-</span> prueba <span class="sc">%&gt;%</span></span>
-<span id="cb7-27"><a href="#cb7-27" tabindex="-1"></a>              dplyr<span class="sc">::</span><span class="fu">summarise</span>(<span class="at">Pob.Total =</span> <span class="fu">survey_total</span>(M, <span class="at">vartype =</span> <span class="fu">c</span>(<span class="st">&quot;se&quot;</span>, <span class="st">&quot;cv&quot;</span>, <span class="st">&quot;ci&quot;</span>), <span class="at">level =</span> <span class="fl">0.90</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span></code></pre></div>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>svy_design <span class="ot">&lt;-</span> MC  <span class="sc">%&gt;%</span></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a>               <span class="fu">svydesign</span>(<span class="at">data =</span> ., <span class="at">ids =</span> <span class="sc">~</span>UPM, <span class="at">strata =</span> <span class="sc">~</span>ESTRATO, </span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a>                          <span class="at">probs =</span> <span class="sc">~</span>probs</span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a>                           <span class="at">nest =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 <p><strong>Población total</strong></p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="do">## Población de total</span></span>
 <span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>Total_est <span class="ot">&lt;-</span> <span class="fu">svyby</span>(<span class="sc">~</span>Pob.Total,</span>

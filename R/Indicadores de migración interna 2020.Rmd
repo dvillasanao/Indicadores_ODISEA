@@ -258,6 +258,10 @@ as.integer(tabla) %>%
   as_raw_html()
 ```
 
+**Diferencias en la estimación de la varianza**   
+
+Es importante identificar que, dentro del análisis de muestras complejas, existen una serie de variaciones en los cálculos de la estimación de la varianza. Ya que en los programas de licencia; `STATA`, `SAS`, `SPSS` o bien de licencia libre como `R`. Existen diferencias en las estimaciones de la varianza o propiamente del **error estándar**. En este documento se hace una revisión de estas discrepancias con los diferentes programas estadísticos y en donde se encuentran estas diferencias significativas del cálculo.            
+[`Understanding the code used to implement the {survey} package’s recursive variance estimation for multistage samples`](https://www.practicalsignificance.com/posts/understanding-the-survey-packages-recursive-algorithm/).   
 
 # Nivel estatal {.tabset .tabset-pills}
 
@@ -284,24 +288,16 @@ MC <- mydata %>%
           mutate(probs = 1/.$FACTOR) %>%
            mutate(Pob.Total = 1,
                   M = 1) 
-MC1 <- MC %>%
+FPC <- MC %>%
         group_by(UPM, ESTRATO) %>% 
          summarise(n = n(), .groups = 'drop') %>%
           mutate(fpc = n/sum(n)) %>% 
            right_join(MC, by = join_by(UPM, ESTRATO))
 
-svy_design <- MC1 %>% 
-               srvyr::as_survey_design(ids = UPM, strata = ESTRATO, probs = probs, nest = TRUE,
-                                       #fpc = fpc, 
-                                       #pps = "brewer",
-                                       survey.lonely.psu = "adjust"
-                                        #variables = c("M"),
-                                       # variance = c("HT")
-                                       )
-prueba <- as.svrepdesign(svy_design, type = c("bootstrap"), replicates = 100)
-
- Total_est <- prueba %>%
-              dplyr::summarise(Pob.Total = survey_total(M, vartype = c("se", "cv", "ci"), level = 0.90, na.rm = TRUE))
+svy_design <- MC  %>%
+               svydesign(data = ., ids = ~UPM, strata = ~ESTRATO, 
+                          probs = ~probs
+                           nest = TRUE)
 ```
 
 
