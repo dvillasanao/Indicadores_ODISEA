@@ -1344,6 +1344,8 @@ saveWorkbook(wb,
 
 # Gráficos  {.tabset .tabset-pills}
 
+Para el claculo de los gráficos, se decide tomar como referencia a los estimadores que salen en SPSS. 
+
 ## Nivel estatal {.tabset .tabset-pills}
 
 ### Población total
