@@ -3326,6 +3326,7 @@ ggexport(list = p, width = 12, height = 8, dpi = 400, filename = path, device = 
 
 #### Emigrantes
 
+
 ```{r}
 tabla <- Pob.Total %>%
           arrange(Emigrantes) %>%
