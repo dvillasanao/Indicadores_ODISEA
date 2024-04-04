@@ -2104,6 +2104,250 @@ ggexport(list = p, width = 9, height = 7, dpi = 400, filename = path, device = "
 ```
 
 
+**Municipios muestreados o censados | Tamaño de municipio | Precisión de la muestra**
+
+```{r}
+tabla <- Pob.Total %>%
+          arrange(Pob.Total) %>%
+           droplevels() %>%
+            mutate(CV = .$Pob.Total_cv * 100) %>% 
+             mutate(CV_Grado = case_when(.$CV >= 0 & .$CV < 15 ~ "Alta", #Grado de precisión"
+                                         .$CV >= 15 & .$CV < 30 ~ "Moderada",
+                                         .$CV >= 30 ~ "Baja")) %>%
+              droplevels() %>%
+               mutate(CV_Grado = forcats::fct_relevel(.$CV_Grado, c("Alta", "Moderada", "Baja")),
+                      TAM_MUN = forcats::fct_relevel(.$TAM_MUN, c("1-2 499 habitantes", "2 500-4 999 habitantes", "5 000-9 999 habitantes", " 10 000-14 999 habitantes", "15 000 a 49 999 habitantes", "50 000-99 999 habitantes", "100 000 y más habitantes")))
+
+table(tabla$TAM_MUN)
+table(tabla$MUN_Muestra, tabla$CV_Grado, tabla$TAM_MUN)
+table(tabla$MUN_Muestra)
+mun <- tabla %>% pull(CVE_MUN)
+
+#Theme
+theme <- theme_minimal() + 
+          theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "inches"),
+                panel.grid.major = element_line(color = "#8F8F8F", size = 0.02),
+                panel.grid.minor = element_line(size = 0.003, linetype = 2),
+                plot.title = element_text(family = "Montserrat Medium", size = 20), 
+                plot.subtitle = element_text(family = "Montserrat Medium", size = 12, color = "#8D8D8D"), 
+                axis.text = element_text(family = "Montserrat Medium", size = 10), 
+                axis.title = element_text(family = "Montserrat Medium", size = 12),
+                axis.title.x =   element_text(family = "Montserrat Medium", size = 8, hjust = 1),
+                axis.text.x = element_text(family = "Montserrat Medium", size = 8, angle = 90, hjust = 1), 
+                legend.text = element_text(family = "Montserrat Medium"),
+                legend.title = element_text(family = "Montserrat Medium")) 
+
+## Colores
+colores <- c("#C70E7B", "#E7467F","#E58560", "#D49E46", "#B0D00F", "#25B99F",  "#5D6093")
+lineas <- c("#B41676", "#CD2C65","#C36D4B", "#C18D37" ,"#98B311", "#188F7A",  "#393C77")
+               
+p <- list()
+Muestra <- c("Municipio censado", "Municipio muestreado")
+Grados <- c("Alta", "Moderada", "Baja")
+Zcal <- c(0.005, 0.5, 0.15)  #70% 70% 70%   #Baja #Alta  #Moderada
+#Grados[2] #Moderada
+TAM <- c("1-2 499 habitantes", "2 500-4 999 habitantes", "5 000-9 999 habitantes", " 10 000-14 999 habitantes", "15 000 a 49 999 habitantes", "50 000-99 999 habitantes", "100 000 y más habitantes")
+
+for(i in 1:2){
+  for(j in 1:3) {
+   for(k in 1:7) {
+     n <- tabla %>%
+           filter(MUN_Muestra %in% Muestra[i]) %>% 
+            filter(CV_Grado %in% Grados[j]) %>% 
+             filter(TAM_MUN %in%  TAM[k]) %>%
+              count() 
+     tabla1 <- tabla %>%
+                filter(MUN_Muestra %in% Muestra[i]) %>% 
+                 filter(CV_Grado %in% Grados[j]) %>% 
+                  filter(TAM_MUN %in% TAM[k]) %>%
+                   mutate(Diff = abs(Pob.Total_Censo - Pob.Total),
+                          limite = case_when(.$Pob.Total_Censo >= (.$Pob.Total - Zcal[j] * .$Pob.Total_se) ~ 1,
+                                             .$Pob.Total_Censo <= (.$Pob.Total + Zcal[j] * .$Pob.Total_se) ~ 1, 
+                                             TRUE ~ NA)) %>%
+                    arrange(desc(Diff))
+     
+     casos <- tabla1 %>%
+               slice(1:20) %>%
+                pull(CVE_MUN)
+     
+     mun <- tabla1 %>% pull(CVE_MUN)
+     
+     ## Límite de la escala en scale_x_continuous()
+     x_lim <- ifelse(n < 30, 250, 
+               ifelse(n >= 30 & n < 100, 550, 
+                ifelse(n >= 100 & n < 200, 700, 
+                 ifelse(n >= 200 & n < 500, 800, 
+                  ifelse(n >= 500, 1000, 
+                         100 #Other cases
+                         )))))
+     
+      ## Direction 
+     direction = ifelse(n < 0, "y",
+                  ifelse(n == 191, "both",
+                   ifelse(n == 917, "both",
+                          "y")))
+     
+     # Ajuste en nudge_y
+     nudge_y_muestra = ifelse(n >= 40 & n < 100, -6, 
+                        ifelse(n >= 100 & n < 200, -70,
+                         ifelse (n >= 200 & n < 300, -80, 
+                          ifelse(n >= 300, -90, 
+                                  -5 #Other cases
+                                  ))))
+     
+     nudge_y_censo = ifelse(n < 40, 0, 
+                      ifelse(n >= 40 & n < 100, 8, 
+                       ifelse(n >= 100, 15, 
+                              5 #Other cases
+                              )))
+     
+     ## Ajuste ylim dentro de geom_text_repel()
+     ylim_min_muestra = ifelse(n > 0, NA, 
+                         ifelse(n == 112, -1 * min(tabla1$Pob.Total_low, tabla1$Pob.Total_Censo) - 200,
+                          ifelse(n == 169, -1 * min(tabla1$Pob.Total_low, tabla1$Pob.Total_Censo) - 7100,
+                                 NA)))
+     
+     ylim_max_muestra = ifelse(n > 0,  NA, NA)
+     
+     ylim_min_censo = ifelse(n > 0,  min(tabla1$Pob.Total_upp, tabla1$Pob.Total_Censo),
+                             NA)
+     
+     ylim_max_censo = ifelse(n > 0, max(tabla1$Pob.Total_upp, tabla1$Pob.Total_Censo),
+                             NA)
+    
+     if(n %in% c(0, 1)){
+     p[[paste0(Muestra[i])]][[paste0(Grados[j])]][[paste0(TAM[k])]] <- tabla1 %>%
+                                                                        ggplot(aes(x = order(factor(CVE_MUN, levels = mun)))) + 
+                                                                         geom_point(aes(y = Pob.Total, 
+                                                                                        color = TAM_MUN),
+                                                                                     size = 2) + 
+                                                                          geom_ribbon(aes(ymin = Pob.Total_low, 
+                                                                                          ymax = Pob.Total_upp, 
+                                                                                          color = TAM_MUN,
+                                                                                          fill = TAM_MUN), 
+                                                                                       alpha = 0.7) + 
+                                                                           geom_point(aes(y = Pob.Total_Censo), 
+                                                                                       size = 2,
+                                                                                        color = "#A1A1A1") +
+                                                                            geom_text_repel(aes(y = Pob.Total, 
+                                                                                                label = round(Pob.Total, 1)), 
+                                                                                            hjust = -1.5,
+                                                                                            force = 1,
+                                                                                            size = 3, 
+                                                                                            angle = 45,
+                                                                                            direction = "y",
+                                                                                            min.segment.length = 0.01,
+                                                                                            segment.size = 0.02,
+                                                                                            segment.colour = lineas[k], 
+                                                                                            family = "Montserrat Medium",
+                                                                                            color = lineas[k]) +
+                                                                             geom_text_repel(aes(y = Pob.Total_Censo, 
+                                                                                                label = round(Pob.Total_Censo, 1)), 
+                                                                                             hjust = 1.5,
+                                                                                             force = 1,
+                                                                                             size = 3, 
+                                                                                             angle = 45,
+                                                                                             direction = direction,
+                                                                                             min.segment.length = 0.01,
+                                                                                             segment.size = 0.02,
+                                                                                             segment.colour = "#BABABA",
+                                                                                             family = "Montserrat Medium", 
+                                                                                             color = "#000000") +
+                                                                              theme +
+                                                                               guides(size = guide_legend(override.aes = list(size = c(0.5, 0.5), color = c(lineas[k], "#A1A1A1")))) +
+                                                                                scale_size_manual(labels = c("Muestra", "Censo"), values = c(1, 0.5)) +
+                                                                                 scale_color_manual(values = colores[k]) +  
+                                                                                  scale_fill_manual(values = lineas[k]) +  
+                                                                                   scale_y_continuous(labels = scales::unit_format(unit = "", scale = 1, sep = " ", big.mark = " ")) + 
+                                                                                    labs(title = "Migración reciente",
+                                                                                         subtitle = paste("Pob.Total", "\n", Muestra[i], "\n", "Precisión", Grados[j], "\n", TAM[k]),
+                                                                                         y = "",
+                                                                                         x = paste(n, "municipios"), 
+                                                                                         size = "",
+                                                                                         color = "", 
+                                                                                         fill = "")    
+     } else {   
+    p[[paste0(Muestra[i])]][[paste0(Grados[j])]][[paste0(TAM[k])]] <- tabla1 %>%
+                                                                       arrange(Pob.Total) %>%
+                                                                        mutate(Etiqueta_Muestra = case_when(nrow(.) <= 30 ~ .$Pob.Total,
+                                                                                                            nrow(.) > 30 &  .$limite %in% 1 & .$CVE_MUN %in% casos ~ .$Pob.Total),
+                                                                               Etiqueta_Censo = case_when(nrow(.) <= 30 ~ .$Pob.Total_Censo,
+                                                                                                          nrow(.) > 30 & .$limite %in% 1 & .$CVE_MUN %in% casos ~ .$Pob.Total_Censo), 
+                                                                               limite_muestra = case_when(.$Pob.Total_low >= .$Pob.Total_Censo ~ .$Pob.Total_Censo - .$Pob.Total_Censo/50,
+                                                                                                          .$Pob.Total_low < .$Pob.Total_Censo ~ .$Pob.Total_low - .$Pob.Total_low/50),
+                                                                               limite_censo = case_when(.$Pob.Total_upp < .$Pob.Total_Censo ~ .$Pob.Total_Censo + .$Pob.Total_Censo/50,
+                                                                                                        .$Pob.Total_upp >= .$Pob.Total_Censo ~ .$Pob.Total_upp + .$Pob.Total_upp/50)) %>% 
+                                                                         ggplot(aes(x = order(factor(CVE_MUN, levels = mun)))) + 
+                                                                          geom_line(aes(y = Pob.Total, 
+                                                                                        color = TAM_MUN, 
+                                                                                        size = "size1")) + 
+                                                                           geom_ribbon(aes(ymin = Pob.Total_low, 
+                                                                                           ymax = Pob.Total_upp, 
+                                                                                           color = TAM_MUN,
+                                                                                           fill = TAM_MUN), 
+                                                                                        alpha = 0.2) + 
+                                                                             geom_line(aes(y = Pob.Total_Censo, 
+                                                                                           size = "size2"), 
+                                                                                           color = "#A1A1A1", 
+                                                                                       linetype = 1) + 
+                                                                              geom_text_repel(aes(y = limite_muestra, 
+                                                                                                  label = ifelse(is.na(Etiqueta_Muestra), "", format(Etiqueta_Muestra, sep = " ", big.mark = " "))), 
+                                                                                              hjust = 1.5,
+                                                                                              force = 1,
+                                                                                              size = 2, 
+                                                                                              angle = 90,
+                                                                                              direction = direction,
+                                                                                              min.segment.length = 0.01,
+                                                                                              #position = position_jitter(seed = 123),
+                                                                                              nudge_y = nudge_y_muestra,
+                                                                                              ylim = c(ylim_min_muestra, ylim_max_muestra),
+                                                                                              segment.size = 0.02,
+                                                                                              segment.colour = lineas[k], 
+                                                                                              family = "Montserrat Medium",
+                                                                                              color = lineas[k],
+                                                                                              na.rm = TRUE) +
+                                                                              geom_text_repel(aes(y = limite_censo, 
+                                                                                                  label = ifelse(is.na(Etiqueta_Censo), "", format(Etiqueta_Censo, sep = " ", big.mark = " "))), 
+                                                                                              size = 2, 
+                                                                                              hjust = -1.5,
+                                                                                              force = 1,
+                                                                                              angle = 90,
+                                                                                              direction = direction,
+                                                                                              min.segment.length = 0.01,
+                                                                                              #position = position_jitter(seed = 123),
+                                                                                              nudge_y = nudge_y_censo,
+                                                                                              ylim = c(ylim_min_censo, ylim_max_censo),
+                                                                                              segment.size = 0.02,
+                                                                                              segment.colour = "#BABABA",
+                                                                                              family = "Montserrat Medium", 
+                                                                                              color = "#000000",
+                                                                                              na.rm = TRUE) +
+                                                                               theme +
+                                                                                guides(size = guide_legend(override.aes = list(size = c(0.5, 0.5), color = c(lineas[k], "#A1A1A1")))) +
+                                                                                 scale_size_manual(labels = c("Muestra", "Censo"), values = c(1, 0.5)) +
+                                                                                  scale_color_manual(values = colores[k]) +  
+                                                                                   scale_fill_manual(values = lineas[k]) +  
+                                                                                    scale_y_continuous(limits = c(min(tabla1$Pob.Total_low, tabla1$Pob.Total_Censo) - x_lim, max(tabla1$Pob.Total_upp, tabla1$Pob.Total_Censo) + x_lim),
+                                                                                                       labels = scales::unit_format(unit = "", scale = 1, sep = " ", big.mark = " ")) + 
+                                                                                     scale_x_continuous(breaks = seq(1, nrow(tabla1), by = ceiling(nrow(tabla1)/10))) + 
+                                                                                      labs(title = "Migración reciente",
+                                                                                           subtitle = paste("Población Total", "\n", Muestra[i], "\n", "Precisión", Grados[j], "\n", TAM[k]),
+                                                                                           y = "",
+                                                                                           x = paste(n, "municipios"), 
+                                                                                           size = "",
+                                                                                           color = "", 
+                                                                                           fill = "") 
+     } 
+    }
+  }
+}
+
+p
+path = paste0(here::here(), "/Graficos/MR5a (Pob.Total) a nivel municipal_Tamaño de municipio.pdf") 
+ggexport(list = p, width = 12, height = 8, dpi = 400, filename = path, device = "cairo_pdf")         
+```
+
+
 ### Migración reciente {.tabset .tabset-pills}
 
 #### Residentes
